@@ -199,4 +199,5 @@ def gestao_dossie(prot):
     return "Relato não encontrado", 404
 
 if __name__ == '__main__':
+    
     app.run(debug=True, host='0.0.0.0', port=8081)

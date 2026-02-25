@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory, make_response, session, redirect, url_for
 import smtplib, json, os, hashlib, shutil
 import base64 
+import threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, timezone # <--- Atualizado
 from werkzeug.utils import secure_filename
 from cryptography.fernet import Fernet
+
 
 # Constante para facilitar o uso do fuso horário de Brasília em todo o código
 FUSO_BR = timezone(timedelta(hours=-3))
@@ -74,7 +76,7 @@ def alertar_admin_bloqueio():
     """ Envia e-mail de falta de pagamento diretamente para a Camila via SSL (Porta 465) """
     try:
         # Mudança para SMTP_SSL na porta 465 com timeout definido
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15)
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10)
         server.login(MEU_EMAIL_ENVIO, MINHA_SENHA_APP)
         
         msg = MIMEMultipart()
@@ -159,38 +161,85 @@ cipher_suite = Fernet(CHAVE_MESTRA)
 
 def criptografar_dado(texto):
     """ Criptografia Reversível (AES-256) """
-    if not texto or texto.upper() == "ANONIMO" or "@" not in texto:
+    try:
+        # Proteções
+        if not texto:
+            return "ANONIMO"
+
+        # Converte bytes → str se necessário
+        if isinstance(texto, bytes):
+            texto = texto.decode('utf-8', errors='ignore')
+
+        texto = str(texto).strip()
+
+        if texto.upper() == "ANONIMO":
+            return "ANONIMO"
+
+        if "@" not in texto:
+            return "ANONIMO"
+
+        texto_preparado = texto.lower().encode('utf-8')
+        return cipher_suite.encrypt(texto_preparado).decode('utf-8')
+
+    except Exception as e:
+        print("❌ ERRO criptografar_dado:", e)
         return "ANONIMO"
-    # Normaliza para evitar erros de espaços ou maiúsculas antes de cifrar
-    texto_preparado = texto.lower().strip().encode()
-    return cipher_suite.encrypt(texto_preparado).decode()
+
 
 def gerar_id_criptografico(dado_criptografado):
     """ Gera um ID visual curto para o dossiê baseado no hash da cifra """
-    if not dado_criptografado or "ANONIMO" in dado_criptografado:
+    try:
+        if not dado_criptografado:
+            return "IDENTIDADE PRESERVADA"
+
+        # Converte bytes → str se necessário
+        if isinstance(dado_criptografado, bytes):
+            dado_criptografado = dado_criptografado.decode('utf-8', errors='ignore')
+
+        dado_criptografado = str(dado_criptografado)
+
+        if "ANONIMO" in dado_criptografado.upper():
+            return "IDENTIDADE PRESERVADA"
+
+        # Proteção contra string curta
+        if len(dado_criptografado) < 22:
+            return "IDENTIDADE PRESERVADA"
+
+        fragmento = dado_criptografado[10:22].upper()
+        fragmento = fragmento.replace('-', 'X').replace('_', 'Y')
+
+        return f"ID_SEGURANCA_{fragmento}"
+
+    except Exception as e:
+        print("❌ ERRO gerar_id_criptografico:", e)
         return "IDENTIDADE PRESERVADA"
-    # Extrai um fragmento da cifra para servir como ID de segurança visual
-    fragmento = dado_criptografado[10:22].upper().replace('-', 'X').replace('_', 'Y')
-    return f"ID_SEGURANCA_{fragmento}"
 
 def gerar_protocolo_sequencial():
     """ Gera protocolo baseado na data: AAAAMMDD-0001 """
     data_hoje = datetime.now().strftime('%Y%m%d')
     contador = 1
-    
+
+    def gerar_protocolo_sequencial():
+     """ Gera protocolo baseado na data: AAAAMMDD-0001 """
+    data_hoje = datetime.now().strftime('%Y%m%d')
+    contador = 1
+
     if os.path.exists(DB_FILE):
-        # AJUSTE: encoding utf-8 garante que acentos no banco não travem a leitura
+        # encoding utf-8 garante que acentos no banco não travem a leitura
         with open(DB_FILE, "r", encoding="utf-8") as f:
             try:
                 banco = json.load(f)
-                # Filtra denúncias de hoje para seguir a sequência
-                hoje_count = [d for d in banco if str(d.get('protocolo', '')).startswith(data_hoje)]
+                hoje_count = [
+                    d for d in banco
+                    if str(d.get('protocolo', '')).startswith(data_hoje)
+                ]
                 contador = len(hoje_count) + 1
-            except: 
-                # Se o arquivo estiver vazio ou corrompido, recomeça do 1
+            except Exception as e:
+                print("Erro ao ler banco de dados:", e)
                 contador = 1
-                
+
     return f"{data_hoje}-{str(contador).zfill(4)}"
+
 # ==========================================
 # [BLOCO 03]: ROTAS DE NAVEGAÇÃO E COOKIES
 # ==========================================
@@ -230,19 +279,74 @@ def consultar(prot):
 # ==========================================
 # [BLOCO 04]: MOTOR DE PROCESSAMENTO (VERSÃO BASE64 + GESTÃO)
 # ==========================================
+
+# ===== FUNÇÃO GLOBAL DE EMAIL (THREAD) =====
+def enviar_emails_async(unidade, data_hora, protocolo, email_bruto):
+    try:
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10)
+        server.login(MEU_EMAIL_ENVIO, MINHA_SENHA_APP)
+
+        BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8080")
+        link_gestao = f"{BASE_URL}/gestao/{protocolo}"
+
+        # ===== EMAIL ADMIN =====
+        msg_admin = MIMEMultipart()
+        msg_admin['Subject'] = f"ALERTA: Nova Denúncia #{protocolo} - {unidade}"
+        msg_admin['From'] = MEU_EMAIL_ENVIO
+
+        corpo_admin = (
+            f"Nova denúncia recebida.\n\n"
+            f"Unidade: {unidade}\n"
+            f"Data: {data_hora}\n"
+            f"Protocolo: {protocolo}\n\n"
+            f"Acessar painel:\n{link_gestao}"
+        )
+        msg_admin.attach(MIMEText(corpo_admin, 'plain'))
+
+        for admin in LISTA_ADMINS:
+            server.sendmail(MEU_EMAIL_ENVIO, admin, msg_admin.as_string())
+
+        # ===== EMAIL DENUNCIANTE =====
+        if email_bruto and "@" in email_bruto:
+            msg_user = MIMEMultipart()
+            msg_user['Subject'] = f"Confirmação de Registro - Protocolo #{protocolo}"
+            msg_user['From'] = f"Canal de Integridade El Shadday <{MEU_EMAIL_ENVIO}>"
+            msg_user['To'] = email_bruto
+
+            corpo_user = (
+                f"Seu relato foi registrado com sucesso.\n\n"
+                f"PROTOCOLO: {protocolo}\n"
+                f"DATA: {data_hora}\n"
+                f"UNIDADE: {unidade}\n\n"
+                f"Guarde este protocolo.\n"
+                f"Atenciosamente,\nCanal de Integridade El Shadday"
+            )
+            msg_user.attach(MIMEText(corpo_user, 'plain'))
+
+            server.sendmail(MEU_EMAIL_ENVIO, email_bruto, msg_user.as_string())
+
+        server.quit()
+
+    except Exception as e:
+        print(f"❌ ERRO EMAIL THREAD: {e}")
+
+# ===== ROTA =====
+from threading import Thread
+
 @app.route('/enviar', methods=['POST'])
 def enviar():
     if not verificar_licenca():
         return jsonify({"status": "erro", "msg": "Licença expirada. Transação recusada."}), 403
         
     try:
-        # AJUSTE DE FUSO HORÁRIO PARA BRASÍLIA (Importante para o Railway)
+        # ===== FUSO HORÁRIO BRASIL =====
         fuso_br = timezone(timedelta(hours=-3))
         agora = datetime.now(fuso_br)
         
         protocolo = gerar_protocolo_sequencial()
-        data_hora = agora.strftime('%d/%m/%Y %H:%M:%S') # Formato: 23/02/2026 08:15:30
+        data_hora = agora.strftime('%d/%m/%Y %H:%M:%S')
         
+        # ===== DADOS FORM =====
         unidade = request.form.get('unidade') 
         categoria = request.form.get('categoria')
         assunto = request.form.get('titulo')
@@ -250,28 +354,32 @@ def enviar():
         email_bruto = request.form.get('email_opcional')
         arquivo = request.files.get('arquivo')
         
+        # ===== PASTA =====
         nome_setor_pasta = secure_filename(unidade)
         caminho_final_setor = os.path.join(UPLOAD_FOLDER, nome_setor_pasta)
         if not os.path.exists(caminho_final_setor):
             os.makedirs(caminho_final_setor)
 
+        # ===== ANEXO =====
         conteudo_anexo_final = "Nenhum"
         if arquivo and arquivo.filename != '':
             if allowed_file(arquivo.filename):
                 extensao = os.path.splitext(arquivo.filename)[1].lower().replace('.', '')
-                if extensao == 'jpg': extensao = 'jpeg'
+                if extensao == 'jpg': 
+                    extensao = 'jpeg'
                 imagem_bits = arquivo.read()
                 imagem_base64 = base64.b64encode(imagem_bits).decode('utf-8')
                 conteudo_anexo_final = f"data:image/{extensao};base64,{imagem_base64}"
             else:
                 return jsonify({"status": "erro", "msg": "❌ ARQUIVO BLOQUEADO: Use apenas fotos."}), 400
 
+        # ===== CRIPTOGRAFIA =====
         email_cripto = criptografar_dado(email_bruto)
 
-        # DICIONÁRIO ATUALIZADO PARA ALINHAR COM A FOTO DO DASHBOARD
+        # ===== OBJETO DENÚNCIA =====
         nova_denuncia = {
             "protocolo": protocolo,
-            "data": data_hora,          # Este campo preenche a coluna DATA/REGISTRO
+            "data": data_hora,
             "unidade": unidade,
             "setor_pasta": nome_setor_pasta,
             "categoria": categoria,
@@ -283,69 +391,41 @@ def enviar():
             "parecer_comite": ""           
         }
         
+        # ===== BANCO JSON =====
         banco = []
         if os.path.exists(DB_FILE):
             with open(DB_FILE, "r", encoding="utf-8") as f:
-                try: banco = json.load(f)
-                except: banco = []
-        
+                try:
+                    banco = json.load(f)
+                except:
+                    banco = []
+
         banco.append(nova_denuncia)
+
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(banco, f, indent=2, ensure_ascii=False)
 
-        backup_file_path = os.path.join(caminho_final_setor, f"DENUNCIA_{protocolo}.json")
-        with open(backup_file_path, "w", encoding="utf-8") as fb:
-            json.dump(nova_denuncia, fb, indent=4, ensure_ascii=False)
+        # ===== THREAD EMAIL =====
+        Thread(
+            target=enviar_emails_async,
+            args=(unidade, data_hora, protocolo, email_bruto),
+            daemon=True
+        ).start()
 
-        # LÓGICA DE NOTIFICAÇÃO //// Protocolo ///
-           # LÓGICA DE NOTIFICAÇÃO //// Protocolo ///
-        try:
-            server = smtplib.SMTP('smtp.gmail.com', 587)
-            server.starttls()
-            server.login(MEU_EMAIL_ENVIO, MINHA_SENHA_APP)
-            
-            # Ajuste o link de gestão para o domínio real se necessário
-            link_gestao = f"http://127.0.0.1:8080/gestao/{protocolo}"
-            
-            msg_admin = MIMEMultipart()
-            msg_admin['Subject'] = f"ALERTA: Nova Denúncia #{protocolo} - {unidade}"
-            msg_admin['From'] = MEU_EMAIL_ENVIO
-            corpo_admin = f"Nova denúncia recebida.\nUnidade: {unidade}\nData: {data_hora}\nProtocolo: {protocolo}\nLink para Dossiê: {link_gestao}"
-            msg_admin.attach(MIMEText(corpo_admin, 'plain'))
-            
-            for admin in LISTA_ADMINS:
-                server.sendmail(MEU_EMAIL_ENVIO, admin, msg_admin.as_string())
+        # ===== RESPOSTA HTTP (MODAL) =====
+        response = jsonify({
+            "status": "sucesso",
+            "protocolo": protocolo
+        })
+        response.set_cookie('ultimo_protocolo', protocolo, max_age=60*60*24*30)
+        return response, 200
 
-            if email_bruto and "@" in email_bruto:
-                msg_user = MIMEMultipart()
-                msg_user['Subject'] = f"Confirmação de Registro: Protocolo #{protocolo}"
-                msg_user['From'] = f"Canal de Integridade El Shadday | CodeTecx <{MEU_EMAIL_ENVIO}>"
-                msg_user['To'] = email_bruto
-                
-                corpo_user = (
-                    f"Prezado(a),\n\n"
-                    f"Confirmamos o recebimento do seu relato em nosso Canal de Integridade.\n\n"
-                    f"DADOS DO REGISTRO:\n"
-                    f"Protocolo: {protocolo}\n"
-                    f"Data/Hora: {data_hora}\n"
-                    f"Unidade: {unidade}\n\n"
-                    f"Seu relato será analisado pelo nosso Comitê de Ética. O sigilo da sua identidade "
-                    f"está protegido conforme as diretrizes da Lei 14.457/22.\n\n"
-                    f"Atenciosamente,\n"
-                    f"Sistema de Integridade El Shadday | CodeTecx"
-                )
-                
-                msg_user.attach(MIMEText(corpo_user, 'plain'))
-                server.sendmail(MEU_EMAIL_ENVIO, email_bruto, msg_user.as_string())
-            server.quit()
-        except Exception as e: 
-            print(f"Erro no envio de e-mail: {e}")
-
-        resp = make_response(jsonify({"status": "sucesso", "protocolo": protocolo}))
-        resp.set_cookie('ultimo_protocolo', protocolo, max_age=60*60*24*30)
-        return resp
     except Exception as e:
-        return jsonify({"status": "erro", "msg": str(e)}), 500
+        print("❌ ERRO GERAL /enviar:", e)
+        return jsonify({
+            "status": "erro",
+            "msg": "Erro interno no processamento"
+        }), 500
 # ==============================================================================
 # [BLOCO 05]: GESTÃO, DASHBOARD E NOTIFICAÇÃO AUTOMÁTICA (SEM TRAVA DE 10 LINHAS)
 # ==============================================================================
@@ -365,11 +445,12 @@ def carregar_credenciais():
 
 # --- [B] MOTOR DE COMUNICAÇÃO COM O DENUNCIANTE ---
 def enviar_email_conclusao(email_criptografado, protocolo, parecer):
-    """ Descriptografa o e-mail e envia o parecer final automaticamente """
+    """ Descriptografa o e-mail e envia o parecer final automaticamente (não bloqueante, seguro e estável) """
     try:
         if not email_criptografado or "ANONIMO" in email_criptografado:
             return False
 
+        # Descriptografa e-mail
         email_real = cipher_suite.decrypt(email_criptografado.encode()).decode()
         
         msg = MIMEMultipart()
@@ -379,29 +460,59 @@ def enviar_email_conclusao(email_criptografado, protocolo, parecer):
 
         corpo_html = f"""
         <html>
-            <body style="font-family: 'Segoe UI', Tahoma, sans-serif; color: #1e293b; line-height: 1.6;">
-                <div style="max-width: 600px; margin: auto; border: 1px solid #e2e8f0; padding: 30px; border-radius: 15px;">
-                    <h2 style="color: #2563eb;">Atualização de Relato</h2>
-                    <p>Informamos que a análise do seu relato sob o protocolo <strong>{protocolo}</strong> foi concluída.</p>
-                    <div style="background-color: #f1f5f9; padding: 20px; border-left: 6px solid #2563eb; margin: 20px 0;">
-                        <p><strong>Parecer Final:</strong><br>"{parecer}"</p>
+            <body style="font-family: 'Segoe UI', Tahoma, sans-serif; color: #1e293b; line-height: 1.6; background-color:#f8fafc; padding:20px;">
+                <div style="max-width: 600px; margin: auto; background:#ffffff; border: 1px solid #e2e8f0; padding: 30px; border-radius: 16px;">
+                    
+                    <div style="text-align:center; margin-bottom:25px;">
+                        <h2 style="color: #1d4ed8; margin:0;">Canal de Integridade</h2>
+                        <p style="font-size:12px; color:#64748b; margin-top:4px;">
+                            Sistema de Ética e Conformidade Institucional
+                        </p>
                     </div>
-                    <p style="font-size: 11px; color: #94a3b8;">Mensagem automática | Canal de Integridade El Shadday & CodeTecx<br>
-                    Em conformidade com a Lei 14.457/22</p>
+
+                    <h3 style="color: #0f172a;">Atualização de Relato</h3>
+
+                    <p>
+                        Informamos que a análise do seu relato sob o protocolo 
+                        <strong style="color:#1d4ed8;">{protocolo}</strong> foi concluída pelo Comitê de Ética.
+                    </p>
+
+                    <div style="background-color: #f1f5f9; padding: 20px; border-left: 6px solid #2563eb; margin: 20px 0; border-radius:6px;">
+                        <p style="margin:0; font-size:14px;">
+                            <strong>Parecer Final:</strong><br><br>
+                            "{parecer}"
+                        </p>
+                    </div>
+
+                    <p style="font-size:13px;">
+                        Este retorno encerra formalmente o processo de apuração interna, conforme os
+                        princípios de integridade, confidencialidade e proteção ao denunciante.
+                    </p>
+
+                    <hr style="border:none; border-top:1px solid #e2e8f0; margin:25px 0;">
+
+                    <p style="font-size: 11px; color: #64748b; text-align:center;">
+                        Mensagem automática | Canal de Integridade El Shadday & CodeTecx<br>
+                        Em conformidade com a Lei 14.457/22<br>
+                        Este é um e-mail institucional, não responda este endereço.
+                    </p>
+
                 </div>
             </body>
         </html>
         """
+
         msg.attach(MIMEText(corpo_html, 'html'))
-##### Tratamento #####
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
+
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10)
         server.login(MEU_EMAIL_ENVIO, MINHA_SENHA_APP)
         server.send_message(msg)
         server.quit()
+
         return True
+
     except Exception as e:
-        print(f"Erro na notificação: {e}")
+        print("Erro na notificação de conclusão:", e)
         return False
 
 # --- [C] CONTROLE DE SESSÃO E LOGIN ---
