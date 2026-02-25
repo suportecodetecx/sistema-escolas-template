@@ -88,7 +88,7 @@ def alertar_admin_bloqueio():
     """ Envia e-mail de falta de pagamento via Resend (Fiel ao seu texto original) """
     try:
         resend.Emails.send({
-            "from": f"Sistema de Segurança <onboarding@resend.dev>",
+            "from": f"Sistema de Segurança <suporte@codetecx.com>",
             "to": EMAIL_CAMILA,
             "subject": "⚠️ AVISO IMPORTANTE: Suspensão de Licença - Canal de Ética",
             "html": f"""
@@ -237,7 +237,7 @@ def enviar_emails_async(unidade, data_hora, protocolo, email_bruto):
 
         # EMAIL ADMIN
         resend.Emails.send({
-            "from": f"Canal de Integridade <onboarding@resend.dev>",
+            "from": f"Canal de Integridade <suporte@codetecx.com>",
             "to": LISTA_ADMINS,
             "subject": f"ALERTA: Nova Denúncia #{protocolo} - {unidade}",
             "html": f"""
@@ -252,7 +252,7 @@ def enviar_emails_async(unidade, data_hora, protocolo, email_bruto):
         # EMAIL DENUNCIANTE
         if email_bruto and "@" in str(email_bruto):
             resend.Emails.send({
-                "from": f"Canal de Integridade El Shadday <onboarding@resend.dev>",
+                "from": f"Canal de Integridade El Shadday <suporte@codetecx.com>",
                 "to": email_bruto.strip(),
                 "subject": f"Confirmação de Registro - Protocolo #{protocolo}",
                 "html": f"""
@@ -350,7 +350,7 @@ def enviar_email_conclusao(email_criptografado, protocolo, parecer):
         email_real = cipher_suite.decrypt(email_criptografado.encode()).decode().strip()
         
         resend.Emails.send({
-            "from": f"Comitê de Ética EL SHADDAY <onboarding@resend.dev>",
+            "from": f"Comitê de Ética EL SHADDAY <suporte@codetecx.com>",
             "to": email_real,
             "subject": f"CONCLUSÃO DE CHAMADO: Protocolo #{protocolo}",
             "html": f"""
