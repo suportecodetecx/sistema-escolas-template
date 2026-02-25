@@ -287,7 +287,8 @@ def enviar_emails_async(unidade, data_hora, protocolo, email_bruto):
     """ Envio assíncrono otimizado para Railway/Gmail """
     try:
         # SMTP_SSL na porta 465 com timeout estendido para nuvem
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=20)
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=25)
+        server.starttls()  # ESTA LINHA É OBRIGATÓRIA AQUI
         server.login(MEU_EMAIL_ENVIO, MINHA_SENHA_APP)
 
         # Pega a URL do app das variáveis de ambiente ou usa localhost como fallback
