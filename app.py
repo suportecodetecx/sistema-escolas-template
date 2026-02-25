@@ -28,7 +28,7 @@ caminho_base = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '.')
 
 # Configurações de E-mail e Alerta
 MEU_EMAIL_ENVIO = "canaldenuncia@codetecx.com"
-MINHA_SENHA_APP = "azguhxdozlmhdoiv" 
+MINHA_SENHA_APP = "wvutpranzjyyosuz" 
 EMAIL_CAMILA = "camilameireles@se-pmmc.com.br"
 LISTA_ADMINS = ["canaldenuncia@codetecx.com", EMAIL_CAMILA]
 
