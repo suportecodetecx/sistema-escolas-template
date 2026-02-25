@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+
+    <title>Gestão de Integridade | EL SHADDAY</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        body.panel-open {
+            overflow: hidden;
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .card-stats {
+            transition: transform 0.2s;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .card-stats:hover {
+            transform: translateY(-2px);
+        }
+
+        .dashboard-view {
+            display: none;
+        }
+
+        .dashboard-view.active {
+            display: block;
+        }
+
+        .table-view.hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="bg-blue-600 p-2 rounded-lg text-white">
+                    <i data-lucide="shield-check"></i>
+                </div>
+                <span class="font-bold text-xl tracking-tight uppercase italic text-slate-700">EL SHADDAY <span
+                        class="text-blue-600">Integridade</span></span>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="toggleView()" id="btnViewToggle"
+                    class="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-blue-100 transition-all border border-blue-200">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> EXIBIR DASHBOARD
+                </button>
+
+                <button onclick="toggleConfig()"
+                    class="text-slate-400 hover:text-blue-600 transition-all p-2 rounded-lg hover:bg-slate-50"
+                    title="Configurações">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+
+                <a href="/logout"
+                    class="text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg transition text-xs font-bold flex items-center gap-1">
+                    <i data-lucide="log-out" class="w-4 h-4"></i> SAIR
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 relative">
+
+        <div id="config_box_global"
+            class="hidden absolute right-4 top-0 z-50 w-full max-w-sm p-6 bg-white border border-slate-200 rounded-2xl space-y-5 shadow-2xl ring-1 ring-black/5">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-50 p-2 rounded-lg"><i data-lucide="lock" class="w-4 h-4 text-blue-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase">Segurança</h3>
+                        <p class="text-[10px] text-slate-500">Atualize suas credenciais</p>
+                    </div>
+                </div>
+                <button onclick="toggleConfig()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x"
+                        class="w-5 h-5"></i></button>
+            </div>
+            <div class="space-y-4">
+                <input type="text" id="novo_user_global" placeholder="Novo usuário"
+                    class="w-full bg-slate-50 border border-slate-200 p-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="password" id="nova_pass_global" placeholder="Nova senha"
+                    class="w-full bg-slate-50 border border-slate-200 p-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                <button onclick="salvarNovoAcessoGlobal()" id="btn_confirmar_acesso"
+                    class="w-full bg-slate-700 text-white text-xs font-bold py-3 rounded-xl hover:bg-blue-600 transition-all uppercase tracking-widest flex items-center justify-center gap-2">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Confirmar Alteração
+                </button>
+            </div>
+        </div>
+
+        <div
+            class="mb-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Período De:</label>
+                <input type="date" id="filtroDataInicio" onchange="filtrarBI()"
+                    class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Período Até:</label>
+                <input type="date" id="filtroDataFim" onchange="filtrarBI()"
+                    class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Unidade Escolar:</label>
+                <select id="filtroUnidadeBI" onchange="filtrarBI()"
+                    class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    <option value="">Todas as Unidades</option>
+                    <option value="Ceic El Shadday">Ceic El Shadday</option>
+                    <option value="Prof. Ceim Egberto Malta Moreira">Prof. Ceim Egberto Malta Moreira</option>
+                </select>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Status:</label>
+                <select id="filtroStatusBI" onchange="filtrarBI()"
+                    class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    <option value="">Todos os Status</option>
+                    <option value="Recebido">Recebido</option>
+                    <option value="Investigação">Investigação</option>
+                    <option value="Finalizada">Finalizada</option>
+                </select>
+            </div>
+            <div class="relative">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+                <input type="text" id="filtroGlobal" onkeyup="filtrarBI()" placeholder="Protocolo ou termo..."
+                    class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 card-stats border-l-blue-500">
+                <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Total de Relatos</p>
+                <h2 id="kpi-total" class="text-2xl font-black text-slate-700">0</h2>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 card-stats border-l-orange-400">
+                <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Novos / Recebidos</p>
+                <h2 id="kpi-recebidos" class="text-2xl font-black text-orange-600">0</h2>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 card-stats border-l-blue-400">
+                <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Em Investigação</p>
+                <h2 id="kpi-investigacao" class="text-2xl font-black text-blue-600">0</h2>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 card-stats border-l-emerald-500">
+                <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Finalizados</p>
+                <h2 id="kpi-finalizados" class="text-2xl font-black text-emerald-600">0</h2>
+            </div>
+        </div>
+
+        <div id="dashboardArea" class="dashboard-view space-y-6">
+            <div class="flex justify-end mb-4">
+                <button onclick="gerarPdfGraficos()"
+                    class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-md">
+                    <i data-lucide="file-down" class="w-4 h-4"></i> EXPORTAR GRÁFICOS (PDF)
+                </button>
+            </div>
+            <div id="captureArea"
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50 p-4 rounded-2xl">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase mb-4 self-start">Status das Tratativas</h3>
+                    <div class="w-full max-w-[250px] relative">
+                        <canvas id="chartStatus"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase mb-4 self-start">Volume por Categoria</h3>
+                    <div class="w-full max-w-[250px]">
+                        <canvas id="chartCategoria"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-1">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase mb-4">Relatos por Unidade</h3>
+                    <canvas id="chartUnidade"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="tableArea" class="table-view">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full text-left border-collapse" id="tabelaDenuncias">
+                    <thead>
+                        <tr
+                            class="bg-slate-50 border-b border-slate-200 text-slate-500 text-[11px] uppercase font-bold tracking-wider">
+                            <th class="px-6 py-4">Protocolo</th>
+                            <th class="px-6 py-4 text-blue-600">Data/Registro</th>
+                            <th class="px-6 py-4">Unidade</th>
+                            <th class="px-6 py-4">Status Atual</th>
+                            <th class="px-6 py-4 text-right">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for d in denuncias %}
+                        <tr class="hover:bg-blue-50/30 transition group" data-data-raw="{{ d.data }}"
+                            data-unidade-raw="{{ d.unidade }}" data-status-raw="{{ d.status }}"
+                            data-categoria-raw="{{ d.categoria }}">
+                            <td class="px-6 py-4 font-mono text-xs font-bold text-blue-600">{{ d.protocolo }}</td>
+                            <td class="px-6 py-4 text-[11px] font-medium text-slate-500">
+                                <div class="flex items-center gap-1.5"><i data-lucide="calendar-days"
+                                        class="w-3.5 h-3.5"></i>{{ d.data }}</div>
+                            </td>
+                            <td class="px-6 py-4 text-sm font-semibold text-slate-700">{{ d.unidade }}</td>
+                            <td class="px-6 py-4">
+                                <span class="status-pill px-3 py-1 rounded-full text-[10px] font-bold uppercase
+                                    {% if 'Recebido' in d.status %} bg-orange-100 text-orange-600
+                                    {% elif 'Investigação' in d.status %} bg-blue-100 text-blue-600
+                                    {% else %} bg-emerald-100 text-emerald-600 {% endif %}">
+                                    {{ d.status }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <button type="button" data-protocolo="{{ d.protocolo }}" data-status="{{ d.status }}"
+                                    data-parecer="{{ d.parecer_comite or '' }}" data-unidade="{{ d.unidade }}"
+                                    data-relato="{{ d.relato }}" data-categoria="{{ d.categoria }}"
+                                    data-data="{{ d.data }}" data-email="{{ d.email_contato or '' }}"
+                                    onclick="prepararModal(this)"
+                                    class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ml-auto shadow-md">
+                                    <i data-lucide="edit-3" class="w-3 h-3"></i> TRATAR
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-12 pb-4 flex flex-col items-center opacity-40">
+            <div class="flex items-center gap-2">
+                <i data-lucide="layers" class="w-3 h-3"></i>
+                <p class="brand-footer text-[10px] font-bold uppercase italic tracking-widest">CodeTecx Company</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 hidden" onclick="fechar()"></div>
+
+    <div id="modal"
+        class="fixed top-0 right-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 border-l border-slate-200 flex flex-col">
+        <div class="bg-slate-800 p-6 text-white flex justify-between items-center shrink-0">
+            <div>
+                <h2 class="text-xl font-bold uppercase italic">Dossiê de Tratativa</h2>
+                <p class="text-blue-300 text-[10px] font-mono mt-1 uppercase">Protocolo: <span id="prot_titulo"></span>
+                </p>
+            </div>
+            <button onclick="fechar()" class="hover:bg-white/10 p-2 rounded-xl transition"><i
+                    data-lucide="chevron-right" class="w-6 h-6"></i></button>
+        </div>
+        <div id="alerta_finalizada" class="bg-amber-50 border-b border-amber-100 px-6 py-3 hidden">
+            <p class="text-amber-700 text-xs font-bold flex items-center gap-2"><i data-lucide="lock"
+                    class="w-4 h-4"></i> MODO LEITURA</p>
+        </div>
+        <div class="flex-1 overflow-y-auto p-8 space-y-8 custom-scroll">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p class="text-[10px] text-slate-400 font-black uppercase">Unidade</p>
+                    <p id="txt_unidade" class="text-sm font-bold text-slate-700"></p>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p class="text-[10px] text-slate-400 font-black uppercase">Data do Registro</p>
+                    <p id="txt_data_registro" class="text-sm font-bold text-slate-700"></p>
+                </div>
+            </div>
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-100">
+                <p class="text-[10px] text-slate-400 font-black mb-2 uppercase">Relato</p>
+                <div id="txt_relato_box" class="text-sm text-slate-600 italic whitespace-pre-line"></div>
+            </div>
+
+            <form action="/atualizar_denuncia" method="POST" id="formTratativa" class="space-y-6">
+                <input type="hidden" name="protocolo" id="input_prot">
+                <input type="hidden" name="email_denunciante" id="input_email">
+
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Status do Processo</label>
+                <select name="status" id="select_status"
+                    class="w-full p-4 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700">
+                    <option value="Recebido">Recebido</option>
+                    <option value="Investigação">Investigação</option>
+                    <option value="Finalizada">Finalizada</option>
+                </select>
+
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Parecer Técnico</label>
+                <textarea name="parecer" id="txt_parecer" required
+                    class="w-full p-5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm h-60 bg-slate-50/30"></textarea>
+            </form>
+        </div>
+        <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-4">
+            <button type="submit" form="formTratativa" id="btn_salvar"
+                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 rounded-xl transition shadow-lg flex items-center justify-center gap-2 uppercase text-xs">
+                <i data-lucide="save" class="w-5 h-5"></i> Salvar
+            </button>
+            <button type="button" onclick="imprimirDossie()"
+                class="bg-white border border-slate-200 px-8 py-5 rounded-xl hover:bg-slate-100 transition">
+                <i data-lucide="printer" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        let charts = {};
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            filtrarBI();
+        });
+
+        function toggleView() {
+            const dashboard = document.getElementById('dashboardArea');
+            const table = document.getElementById('tableArea');
+            const btn = document.getElementById('btnViewToggle');
+
+            if (dashboard.classList.contains('active')) {
+                dashboard.classList.remove('active');
+                table.classList.remove('hidden');
+                btn.innerHTML = '<i data-lucide="layout-dashboard" class="w-4 h-4"></i> EXIBIR DASHBOARD';
+            } else {
+                dashboard.classList.add('active');
+                table.classList.add('hidden');
+                btn.innerHTML = '<i data-lucide="table" class="w-4 h-4"></i> EXIBIR TABELA';
+                filtrarBI();
+            }
+            lucide.createIcons();
+        }
+
+        // Configuração Global dos Labels
+        Chart.register(ChartDataLabels);
+        const commonChartOptions = {
+            plugins: {
+                datalabels: {
+                    color: '#fff',
+                    font: { weight: 'bold', size: 11 },
+                    formatter: (value) => value > 0 ? value : ''
+                }
+            }
+        };
+
+        function initCharts() {
+            const ctxStatus = document.getElementById('chartStatus').getContext('2d');
+            const ctxCat = document.getElementById('chartCategoria').getContext('2d');
+            const ctxUni = document.getElementById('chartUnidade').getContext('2d');
+
+            charts.status = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: { labels: ['Recebido', 'Investigação', 'Finalizada'], datasets: [{ data: [0, 0, 0], backgroundColor: ['#fb923c', '#3b82f6', '#10b981'], borderWeight: 0 }] },
+                options: {
+                    cutout: '70%',
+                    plugins: {
+                        ...commonChartOptions.plugins,
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                    }
+                }
+            });
+
+            charts.categoria = new Chart(ctxCat, {
+                type: 'pie',
+                data: { labels: [], datasets: [{ data: [], backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'] }] },
+                options: {
+                    plugins: {
+                        ...commonChartOptions.plugins,
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                    }
+                }
+            });
+
+            charts.unidade = new Chart(ctxUni, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Relatos', data: [], backgroundColor: '#3b82f6', borderRadius: 8 }] },
+                options: {
+                    indexAxis: 'y',
+                    plugins: {
+                        ...commonChartOptions.plugins,
+                        datalabels: { ...commonChartOptions.plugins.datalabels, anchor: 'end', align: 'start' },
+                        legend: { display: false }
+                    },
+                    scales: { x: { grid: { display: false }, ticks: { stepSize: 1 } }, y: { grid: { display: false } } }
+                }
+            });
+        }
+
+        function filtrarBI() {
+            const search = document.getElementById('filtroGlobal').value.toLowerCase();
+            const startValue = document.getElementById('filtroDataInicio').value;
+            const endValue = document.getElementById('filtroDataFim').value;
+            const uniSelect = document.getElementById('filtroUnidadeBI').value;
+            const statusSelect = document.getElementById('filtroStatusBI').value; // Filtro de status
+
+            const rows = document.querySelectorAll("#tabelaDenuncias tbody tr");
+            let stats = { total: 0, recebido: 0, investigacao: 0, finalizado: 0, categorias: {}, unidades: {} };
+
+            const parseDateISO = (str) => {
+                if (!str) return null;
+                const [y, m, d] = str.split('-').map(Number);
+                return new Date(y, m - 1, d).getTime();
+            };
+
+            const parseDateBR = (str) => {
+                if (!str) return null;
+                const dataLimpa = str.split(' ')[0];
+                const [d, m, y] = dataLimpa.split('/').map(Number);
+                return new Date(y, m - 1, d).getTime();
+            };
+
+            const startTime = parseDateISO(startValue);
+            const endTime = parseDateISO(endValue);
+
+            rows.forEach(row => {
+                const rowDateStr = row.getAttribute('data-data-raw');
+                const rowUni = row.getAttribute('data-unidade-raw');
+                const rowStatus = row.getAttribute('data-status-raw');
+                const rowCat = row.getAttribute('data-categoria-raw');
+                const rowText = row.innerText.toLowerCase();
+
+                const rowTime = parseDateBR(rowDateStr);
+
+                let matchData = true;
+                if (startTime && rowTime < startTime) matchData = false;
+                if (endTime && rowTime > endTime) matchData = false;
+
+                let matchUni = (uniSelect === "" || rowUni === uniSelect);
+                let matchStatus = (statusSelect === "" || rowStatus.includes(statusSelect)); // Lógica do filtro status
+                let matchSearch = (search === "" || rowText.includes(search));
+
+                if (matchData && matchUni && matchStatus && matchSearch) {
+                    row.style.display = "";
+                    stats.total++;
+
+                    if (rowStatus.includes('Recebido')) stats.recebido++;
+                    else if (rowStatus.includes('Investigação')) stats.investigacao++;
+                    else if (rowStatus.includes('Finalizada')) stats.finalizado++;
+
+                    let catLimpa = (rowCat && rowCat !== 'None' && rowCat !== '') ? rowCat : 'Não Definido';
+                    stats.categorias[catLimpa] = (stats.categorias[catLimpa] || 0) + 1;
+
+                    if (rowUni) stats.unidades[rowUni] = (stats.unidades[rowUni] || 0) + 1;
+                } else {
+                    row.style.display = "none";
+                }
+            });
+
+            document.getElementById('kpi-total').innerText = stats.total;
+            document.getElementById('kpi-recebidos').innerText = stats.recebido;
+            document.getElementById('kpi-investigacao').innerText = stats.investigacao;
+            document.getElementById('kpi-finalizados').innerText = stats.finalizado;
+
+            atualizarGraficosBI(stats);
+        }
+
+        function atualizarGraficosBI(stats) {
+            if (!stats || !charts.status) return;
+
+            charts.status.data.datasets[0].data = [stats.recebido, stats.investigacao, stats.finalizado];
+            charts.status.update();
+
+            charts.categoria.data.labels = Object.keys(stats.categorias);
+            charts.categoria.data.datasets[0].data = Object.values(stats.categorias);
+            charts.categoria.update();
+
+            charts.unidade.data.labels = Object.keys(stats.unidades);
+            charts.unidade.data.datasets[0].data = Object.values(stats.unidades);
+            charts.unidade.update();
+        }
+
+        // NOVA FUNÇÃO: GERAR PDF DOS GRÁFICOS
+        async function gerarPdfGraficos() {
+            const { jsPDF } = window.jspdf;
+            const captureArea = document.getElementById('captureArea');
+
+            // Pequeno delay para garantir renderização
+            html2canvas(captureArea, { scale: 2, backgroundColor: '#f8fafc' }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('l', 'mm', 'a4');
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth() - 20;
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+                pdf.setFontSize(14);
+                pdf.text("Relatório de Gestão Visual - EL SHADDAY", 10, 15);
+                pdf.addImage(imgData, 'PNG', 10, 25, pdfWidth, pdfHeight);
+                pdf.save(`dashboard_integridade_${new Date().toLocaleDateString()}.pdf`);
+            });
+        }
+
+        function toggleConfig() { document.getElementById('config_box_global').classList.toggle('hidden'); }
+
+        function fechar() {
+            document.getElementById('modal').classList.add('translate-x-full');
+            document.getElementById('overlay').classList.add('hidden');
+            document.body.classList.remove('panel-open');
+        }
+
+        function prepararModal(btn) {
+            const prot = btn.getAttribute('data-protocolo');
+            const status = btn.getAttribute('data-status');
+            const parecer = btn.getAttribute('data-parecer');
+            const unidade = btn.getAttribute('data-unidade');
+            const relato = btn.getAttribute('data-relato');
+            const email = btn.getAttribute('data-email');
+            const dataReg = btn.getAttribute('data-data');
+
+            document.getElementById('prot_titulo').innerText = prot;
+            document.getElementById('input_prot').value = prot;
+            document.getElementById('input_email').value = email;
+            document.getElementById('txt_data_registro').innerText = dataReg;
+            document.getElementById('txt_unidade').innerText = unidade;
+            document.getElementById('txt_relato_box').innerText = relato;
+            document.getElementById('txt_parecer').value = (parecer === 'None' || parecer === '') ? '' : parecer;
+
+            const select = document.getElementById('select_status');
+            const btnS = document.getElementById('btn_salvar');
+            const alertF = document.getElementById('alerta_finalizada');
+
+            select.disabled = false;
+            document.getElementById('txt_parecer').disabled = false;
+            btnS.style.display = 'flex';
+            alertF.classList.add('hidden');
+
+            if (status.includes('Finalizada')) {
+                select.value = 'Finalizada';
+                select.disabled = true;
+                document.getElementById('txt_parecer').disabled = true;
+                btnS.style.display = 'none';
+                alertF.classList.remove('hidden');
+            } else if (status.includes('Investigação')) {
+                select.value = 'Investigação';
+            } else {
+                select.value = 'Recebido';
+            }
+
+            document.getElementById('modal').classList.remove('translate-x-full');
+            document.getElementById('overlay').classList.remove('hidden');
+            document.body.classList.add('panel-open');
+            lucide.createIcons();
+        }
+
+        async function salvarNovoAcessoGlobal() {
+            const user = document.getElementById('novo_user_global').value;
+            const pass = document.getElementById('nova_pass_global').value;
+            if (!user || !pass) return alert("Preencha os campos.");
+
+            const formData = new FormData();
+            formData.append('novo_user', user);
+            formData.append('nova_senha', pass);
+
+            try {
+                await fetch('/alterar_acesso', { method: 'POST', body: formData });
+                alert("Acesso atualizado! Você será deslogado.");
+                window.location.href = '/logout';
+            } catch (err) { alert("Erro na conexão."); }
+        }
+
+        function imprimirDossie() {
+            const prot = document.getElementById('input_prot').value;
+            window.open(`${window.location.origin}/gestao/${prot}`, '_blank');
+        }
+    </script>
+</body>
+
+</html>

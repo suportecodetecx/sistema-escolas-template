@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canal de Integridade | El Shadday</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #f8fafc;
+        }
+
+        /* CORREÇÃO DO FLASH PRETO: Força o modo claro nos controles do navegador */
+        select,
+        option {
+            color-scheme: light !important;
+        }
+
+        /* CORREÇÃO VISUAL: Remove o conflito de transição nos selects */
+        select.input-field {
+            transition: none !important;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .gradient-brand {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        }
+
+        .btn-orange {
+            background: #ea580c;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-orange:hover {
+            background: #c2410c;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(234, 88, 12, 0.3);
+        }
+
+        .input-field {
+            border: 2px solid #f1f5f9;
+            transition: all 0.2s;
+        }
+
+        .input-field:focus {
+            border-color: #ea580c;
+            background: white;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.1);
+        }
+
+        /* Estilo Profissional para o campo de Email Opcional */
+        .email-box-clean {
+            background: #ffffff;
+            border: 2px solid #f1f5f9;
+            transition: all 0.3s ease;
+        }
+
+        .email-box-clean:focus-within {
+            border-color: #1e40af;
+            background: #f8fafc;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .animate-modal {
+            animation: modalIn 0.3s ease-out;
+        }
+    </style>
+</head>
+
+<body class="antialiased text-slate-900 min-h-screen pb-20">
+
+    <div class="gradient-brand pt-16 pb-32 px-4 text-center relative">
+
+        <div style="position: absolute; top: 20px; right: 25px; z-index: 9999;">
+            <a href="{% if admin_logado %}/dashboard{% else %}/login{% endif %}"
+                style="text-decoration: none; display: flex; align-items: center; gap: 8px; opacity: 0.5; transition: opacity 0.3s;"
+                onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'">
+
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#ea580c">
+                    <path
+                        d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                </svg>
+
+       <span style="color: white; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.2em; font-style: italic; opacity: 1 !important;">
+    {% if admin_logado %} Painel Ativo {% else %} Acesso Restrito {% endif %}
+</span>
+            </a>
+        </div>
+
+      <h1 class="text-white text-4xl font-extrabold italic tracking-tighter uppercase mb-2">
+        <span class="text-orange-500">Canal</span> de Integridade
+    </h1>
+    <p class="text-blue-200 text-xs font-bold uppercase tracking-[0.3em]">
+        Instituição Creche El Shadday
+    </p>
+</div>
+    <main class="max-w-3xl mx-auto -mt-20 px-4">
+
+        <div class="glass-card rounded-[2.5rem] shadow-2xl shadow-blue-900/10 overflow-hidden">
+
+            <div class="p-8 md:p-12">
+
+                <div id="step1">
+                    <div class="mb-10 text-center">
+                        <div
+                            class="inline-flex items-center justify-center w-16 h-16 bg-orange-100 text-orange-600 rounded-2xl mb-4">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                        <h2 class="text-2xl font-black text-blue-900 uppercase italic">Segurança e Sigilo Absoluto</h2>
+                        <p class="text-slate-500 mt-3 text-sm leading-relaxed max-w-md mx-auto">
+                            Este canal garante o <span class="font-bold text-blue-900">sigilo absoluto</span> e o
+                            <span class="font-bold text-blue-900">anonimato do relator</span>. Seu relato é processado
+                            com
+                            segurança, em total conformidade com a LGPD e as diretrizes da Lei 14.457/22.
+                        </p>
+                    </div>
+
+                    <div id="termo-container"
+                        class="mb-10 p-6 bg-slate-50 rounded-3xl border-2 border-transparent transition-all">
+                        <label class="flex items-start gap-4 cursor-pointer">
+                            <input type="checkbox" id="checkTermos" class="mt-1 w-6 h-6 accent-orange-600 rounded-lg">
+                            <span class="text-sm font-bold text-slate-600 leading-snug">
+                                Eu compreendo que este canal é destinado a relatos sérios e concordo com os termos de
+                                sigilo.
+                            </span>
+                        </label>
+                        <p id="error-check" class="text-red-500 text-[10px] font-black uppercase mt-3 hidden">⚠️ Por
+                            favor, aceite os termos para prosseguir.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button onclick="validarEProsseguir()"
+                            class="btn-orange text-white font-black py-5 rounded-2xl text-lg uppercase tracking-tighter shadow-lg">Nova
+                            Denúncia</button>
+                        <button onclick="abrirModalConsulta()"
+                            class="bg-white border-2 border-slate-200 text-slate-400 font-bold py-5 rounded-2xl uppercase text-sm hover:border-blue-900 hover:text-blue-900 transition-all">Consultar
+                            Protocolo</button>
+                    </div>
+                </div>
+
+                <div id="step2" class="hidden animate-modal">
+                    <form id="formMaster" class="space-y-8" enctype="multipart/form-data">
+
+                        <div class="space-y-6">
+                            <div class="flex items-center gap-4 border-b border-slate-100 pb-4">
+                                <div
+                                    class="w-10 h-10 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-blue-900 font-black uppercase italic text-lg leading-tight">
+                                        Identificação</h3>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Selecione
+                                        onde o fato ocorreu</p>
+                                </div>
+                            </div>
+
+                            <div class="grid md:grid-cols-2 gap-6">
+
+                                <div class="space-y-2">
+                                    <label
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Unidade
+                                        Escolar</label>
+                                    <select name="unidade"
+                                        class="input-field w-full bg-slate-50 p-4 rounded-2xl font-bold text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:bg-white transition-all"
+                                        required>
+                                        <option value="" class="bg-white text-slate-900">Selecione...</option>
+                                        <option value="Ceic El Shadday" class="bg-white text-slate-900">Ceic El Shadday
+                                        </option>
+                                        <option value="Prof. Ceim Egberto Malta Moreira"
+                                            class="bg-white text-slate-900">Prof. Ceim Egberto Malta Moreira</option>
+                                    </select>
+                                </div>
+
+                                <div class="space-y-2">
+    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Categoria</label>
+    <select name="categoria"
+        class="input-field w-full bg-slate-50 p-4 rounded-2xl font-bold text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:bg-white transition-all"
+        required>
+        <option value="" class="bg-white text-slate-900">Selecione...</option>
+        <option value="Assédio" class="bg-white text-slate-900">Assédio</option>
+        <option value="Elogios" class="bg-white text-slate-900">Elogios e Reconhecimento</option>
+        <option value="Violação" class="bg-white text-slate-900">Maus-tratos ou Negligência</option>
+        <option value="Ética" class="bg-white text-slate-900">Conduta Antiética</option>
+        <option value="Higiene" class="bg-white text-slate-900">Higiene e Infraestrutura</option>
+        <option value="Outros" class="bg-white text-slate-900">Outros Assuntos</option>
+    </select>
+</div>
+
+                            <div class="space-y-2">
+                                <label
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Assunto Breve
+                                    / Título</label>
+                                <input type="text" name="titulo" placeholder="Ex: Relato sobre conduta..."
+                                    class="input-field w-full bg-slate-50 p-4 rounded-2xl font-bold text-sm" required>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="flex items-center gap-4 border-b border-slate-100 pb-4">
+                                <div
+                                    class="w-10 h-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center shadow-sm">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-blue-900 font-black uppercase italic text-lg leading-tight">
+                                        Detalhes</h3>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Descreva o
+                                        relato e anexe provas</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Relato
+                                    Detalhado</label>
+                                <textarea name="relato" rows="5" placeholder="Descreva o que aconteceu..."
+                                    class="input-field w-full bg-slate-50 p-4 rounded-2xl font-medium text-sm resize-none"
+                                    required></textarea>
+                            </div>
+
+                            <div class="email-box-clean p-6 rounded-[2rem] shadow-sm">
+    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">
+        E-mail para Retorno (Opcional)
+    </label>
+    
+    <input type="email" name="email_opcional" 
+        placeholder="Criptografado de ponta a ponta"
+        class="w-full bg-transparent border-b-2 border-slate-200 py-2 outline-none focus:border-blue-900 font-bold transition-all placeholder:font-normal placeholder:text-slate-300">
+    
+    <p class="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tighter">
+        🔒 Dados protegidos, anonimato total.
+    </p>
+</div>
+
+                            <div class="p-6 border-2 border-dashed border-slate-200 rounded-[2rem] text-center hover:border-orange-400 transition-all cursor-pointer bg-slate-50"
+                                onclick="document.getElementById('file-input').click()">
+                                <input type="file" id="file-input" name="arquivo" class="hidden" accept="image/*"
+                                    onchange="labelArquivo(this)">
+                                <span id="file-label" class="text-xs font-black text-slate-400 uppercase block">Anexar
+                                    Evidências</span>
+                                <span
+                                    class="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-1 block">(APENAS
+                                    FOTOS: JPG, PNG, WEBP)</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btnEnviar"
+                            class="w-full btn-orange text-white font-black py-6 rounded-2xl text-xl shadow-2xl uppercase tracking-widest">Enviar
+                            Comunicação</button>
+                    </form>
+                </div>
+
+                <div id="step3" class="hidden text-center py-10 animate-modal">
+                    <div
+                        class="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h2 class="text-3xl font-black text-blue-900 uppercase italic mb-2">Enviado com Sucesso</h2>
+                    <p class="text-slate-500 text-sm mb-10 font-bold uppercase">Guarde o seu protocolo para consulta:
+                    </p>
+
+                    <div class="bg-slate-100 p-8 rounded-[2.5rem] mb-10 border-2 border-dashed border-slate-300">
+                        <span id="res-protocolo" class="text-4xl font-black text-blue-900 tracking-tighter">---</span>
+                    </div>
+
+                    <button onclick="location.reload()"
+                        class="font-black text-orange-600 hover:text-orange-700 underline uppercase text-xs tracking-widest">Voltar
+                        ao Início</button>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="modalConsulta"
+        class="fixed inset-0 bg-blue-900/40 backdrop-blur-sm z-50 items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-modal">
+            <h3 class="text-xl font-black text-blue-900 uppercase italic mb-6">Consultar Andamento</h3>
+            <input type="text" id="inputProt" placeholder="Digite seu protocolo"
+                class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold mb-4 outline-none focus:border-orange-500 transition-all uppercase">
+            <div id="resultConsulta" class="mb-6 p-4 rounded-2xl bg-orange-50 hidden">
+                <p class="text-[10px] font-black text-orange-600 uppercase mb-1">Status Atual:</p>
+                <p id="statusTxt" class="font-bold text-slate-800"></p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="buscarProtocolo()" id="btnBusca"
+                    class="flex-1 btn-orange text-white font-black py-4 rounded-xl uppercase text-xs">Pesquisar</button>
+                <button onclick="fecharModal()"
+                    class="flex-1 bg-slate-100 text-slate-500 font-black py-4 rounded-xl uppercase text-xs">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cookie-banner" class="fixed bottom-6 left-6 right-6 md:left-auto md:max-w-sm z-[100] hidden">
+        <div class="glass-card p-6 rounded-[2rem] shadow-2xl border border-slate-200">
+            <div class="flex items-start gap-4">
+                <div class="bg-orange-100 p-3 rounded-2xl text-orange-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <div class="space-y-2">
+                    <h4 class="font-black text-blue-900 uppercase italic text-sm tracking-tighter">Privacidade e
+                        Segurança</h4>
+                    <p class="text-slate-500 text-[11px] leading-relaxed font-medium">
+                        Utilizamos apenas cookies essenciais para garantir a segurança do seu relato e o funcionamento
+                        deste canal criptografado.
+                    </p>
+                    <div class="pt-2">
+                        <button onclick="aceitarCookies()"
+                            class="w-full btn-orange text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-widest">
+                            Compreendo e Aceito
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lógica de Cookies
+        window.addEventListener('load', function () {
+            if (!localStorage.getItem('cookiesAceitos')) {
+                const banner = document.getElementById('cookie-banner');
+                banner.classList.remove('hidden');
+                banner.classList.add('flex');
+            }
+        });
+
+        function aceitarCookies() {
+            localStorage.setItem('cookiesAceitos', 'true');
+            const banner = document.getElementById('cookie-banner');
+            banner.style.opacity = '0';
+            banner.style.transform = 'translateY(20px)';
+            banner.style.transition = 'all 0.5s ease';
+
+            setTimeout(() => {
+                banner.classList.add('hidden');
+            }, 500);
+        }
+
+        function validarEProsseguir() {
+            const check = document.getElementById('checkTermos');
+            const container = document.getElementById('termo-container');
+            const error = document.getElementById('error-check');
+
+            if (!check.checked) {
+                container.classList.add('border-red-200', 'bg-red-50');
+                error.classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function labelArquivo(input) {
+            const label = document.getElementById('file-label');
+            if (input.files.length > 0) {
+                label.innerText = "✓ SELECIONADO: " + input.files[0].name.toUpperCase();
+                label.classList.replace('text-slate-400', 'text-orange-600');
+            }
+        }
+
+        document.getElementById('formMaster').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnEnviar');
+            btn.innerText = "CRIPTOGRAFANDO E ENVIANDO...";
+            btn.disabled = true;
+
+            const fd = new FormData(e.target);
+            try {
+                const res = await fetch('/enviar', { method: 'POST', body: fd });
+                const data = await res.json();
+
+                if (data.status === 'sucesso') {
+                    document.getElementById('res-protocolo').innerText = data.protocolo;
+                    document.getElementById('step2').classList.add('hidden');
+                    document.getElementById('step3').classList.remove('hidden');
+                    window.scrollTo(0, 0);
+                } else {
+                    alert(data.msg);
+                    btn.disabled = false;
+                    btn.innerText = "Enviar Comunicação";
+                }
+            } catch (err) {
+                alert("Erro de conexão com o servidor de segurança.");
+                btn.disabled = false;
+                btn.innerText = "Enviar Comunicação";
+            }
+        };
+
+        function abrirModalConsulta() {
+            const input = document.getElementById('inputProt');
+            const resDiv = document.getElementById('resultConsulta');
+
+            input.value = '';
+            resDiv.classList.add('hidden');
+
+            document.getElementById('modalConsulta').style.display = 'flex';
+        }
+
+        function fecharModal() {
+            const input = document.getElementById('inputProt');
+            const resDiv = document.getElementById('resultConsulta');
+
+            input.value = '';
+            resDiv.classList.add('hidden');
+
+            document.getElementById('modalConsulta').style.display = 'none';
+        }
+
+        async function buscarProtocolo() {
+            const prot = document.getElementById('inputProt').value.trim();
+            const resDiv = document.getElementById('resultConsulta');
+            const btn = document.getElementById('btnBusca');
+
+            if (!prot) return;
+            btn.innerText = "BUSCANDO...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/consultar/' + prot);
+                const data = await res.json();
+
+                resDiv.classList.remove('hidden');
+                document.getElementById('statusTxt').innerText = data.status || "Protocolo não encontrado";
+            } catch (err) {
+                alert("Erro ao conectar no banco de dados.");
+            } finally {
+                btn.innerText = "Pesquisar";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>
