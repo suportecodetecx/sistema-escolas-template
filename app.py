@@ -69,13 +69,14 @@ def verificar_licenca():
         return datetime.now() <= data_limite
     except:
         return False
-
+#### 1 Manda e-mail para Resposavel cnpj ###
 def alertar_admin_bloqueio():
-    """ Envia e-mail de falta de pagamento diretamente para a Camila """
+    """ Envia e-mail de falta de pagamento diretamente para a Camila via SSL (Porta 465) """
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
+        # Mudança para SMTP_SSL na porta 465 com timeout definido
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15)
         server.login(MEU_EMAIL_ENVIO, MINHA_SENHA_APP)
+        
         msg = MIMEMultipart()
         msg['Subject'] = "⚠️ AVISO IMPORTANTE: Suspensão de Licença - Canal de Ética"
         msg['From'] = MEU_EMAIL_ENVIO
@@ -94,8 +95,9 @@ def alertar_admin_bloqueio():
         msg.attach(MIMEText(corpo, 'plain'))
         server.sendmail(MEU_EMAIL_ENVIO, EMAIL_CAMILA, msg.as_string())
         server.quit()
-    except: 
-        pass
+        print("✅ Alerta de bloqueio enviado com sucesso.")
+    except Exception as e: 
+        print(f"❌ Falha ao enviar alerta de bloqueio: {e}")
 
 # --- HTML DA TELA DE BLOQUEIO PROFISSIONAL ---
 HTML_BLOQUEIO = """
@@ -295,7 +297,8 @@ def enviar():
         with open(backup_file_path, "w", encoding="utf-8") as fb:
             json.dump(nova_denuncia, fb, indent=4, ensure_ascii=False)
 
-        # LÓGICA DE NOTIFICAÇÃO
+        # LÓGICA DE NOTIFICAÇÃO //// Protocolo ///
+           # LÓGICA DE NOTIFICAÇÃO //// Protocolo ///
         try:
             server = smtplib.SMTP('smtp.gmail.com', 587)
             server.starttls()
@@ -390,7 +393,7 @@ def enviar_email_conclusao(email_criptografado, protocolo, parecer):
         </html>
         """
         msg.attach(MIMEText(corpo_html, 'html'))
-
+##### Tratamento #####
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(MEU_EMAIL_ENVIO, MINHA_SENHA_APP)
