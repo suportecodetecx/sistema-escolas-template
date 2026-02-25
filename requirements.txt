@@ -1,4 +1,5 @@
 flask
 cryptography
 werkzeug
+resend
 gunicorn
