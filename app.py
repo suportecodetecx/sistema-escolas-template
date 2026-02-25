@@ -291,7 +291,7 @@ def enviar_emails_async(unidade, data_hora, protocolo, email_bruto):
         server.starttls()  # ESTA LINHA É OBRIGATÓRIA AQUI
         server.login(MEU_EMAIL_ENVIO, MINHA_SENHA_APP)
 
-        # Pega a URL do app das variáveis de ambiente ou usa localhost como fallback
+        # Pega a URL do app das variáveis de ambiente ou usa localhost como fallback######
         BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8080")
         link_gestao = f"{BASE_URL}/gestao/{protocolo}"
 
