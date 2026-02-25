@@ -32,7 +32,16 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 resend.api_key = os.environ.get("RESEND_API_KEY")
 
 # --- AJUSTE DE AMBIENTE (Simulador vs Railway) ---
-caminho_base = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '.')
+# --- AJUSTE DE AMBIENTE ---
+# Ele tenta o Railway primeiro, se não existir, usa a pasta atual do servidor (Render/Local)
+caminho_base = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', os.getcwd())
+
+# Garante que as pastas existam para não dar erro ao salvar
+UPLOAD_FOLDER = os.path.join(caminho_base, 'uploads')
+DATA_FOLDER = os.path.join(caminho_base, 'data')
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(DATA_FOLDER, exist_ok=True)
 
 # Configurações de E-mail e Alerta (Mantendo suas variáveis originais)
 MEU_EMAIL_ENVIO = "suporte@codetecx.com"
