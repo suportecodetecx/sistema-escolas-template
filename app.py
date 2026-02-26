@@ -530,5 +530,5 @@ def area_segura(prot):
     return make_response(conteudo_html)
 
 if __name__ == '__main__':
-    porta = int(os.environ.get("PORT", 8080))
+    porta = int(os.environ.get("PORT", 10000)) # O Render usa a 10000 por padrão
     app.run(host='0.0.0.0', port=porta, debug=False)
