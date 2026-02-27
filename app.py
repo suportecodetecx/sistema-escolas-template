@@ -73,6 +73,12 @@ def home():
     ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
     return render_template('denuncia.html', ultimo=ultimo_visto)
 
+# --- ADICIONE ESTAS LINHAS AQUI ---
+@app.route('/politica-privacidade')
+def politica():
+    return render_template('politica-privacidade.html')
+# ----------------------------------
+
 @app.route('/consultar/<prot>')
 def consultar(prot):
     if not verificar_licenca(): return "Indisponível", 403
