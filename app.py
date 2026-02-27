@@ -206,7 +206,7 @@ def alterar_senha():
     return redirect(url_for('dashboard'))
 
 # ==========================================
-# [BLOCO 06]: DOSSIÊ DE IMPRESSÃO (HTML PRESERVADO)
+# [BLOCO 06]: DOSSIÊ DE IMPRESSÃO (HTML PRESERVADO)++++
 # ==========================================
 @app.route('/gestao/<prot>')
 def area_segura(prot):
