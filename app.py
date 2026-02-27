@@ -3,6 +3,7 @@ import json, os, hashlib, base64
 from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from cryptography.fernet import Fernet
+from pymongo import MongoClient  # Adicionado para conexão com banco
 
 # Fuso horário de Brasília
 FUSO_BR = timezone(timedelta(hours=-3))
@@ -10,28 +11,25 @@ FUSO_BR = timezone(timedelta(hours=-3))
 app = Flask(__name__)
 app.secret_key = 'chave_seguranca_codetecx_2026'
 
+# --- CONFIGURAÇÃO MONGODB (SUBSTITUI JSON) ---
+MONGO_URI = "mongodb+srv://suporte_db_user:2kT3pEb8AcXFWNbk@cluster0.vw8vm8p.mongodb.net/?retryWrites=true&w=majority"
+client = MongoClient(MONGO_URI)
+db = client['sistema_elshadday']
+col_denuncias = db['denuncias']
+col_config = db['config_admin']
+
 # --- VARIÁVEIS GLOBAIS E CRIPTOGRAFIA ---
 CHAVE_MESTRA = b'U2ZLBCXpcy_pEcsjdgCSxoZbYrbneHPDsSA47mso0xw='
 cipher_suite = Fernet(CHAVE_MESTRA)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 
 
-# --- AJUSTE DE AMBIENTE (VERCEL) ---
-# Na Vercel, usamos /tmp para persistência temporária durante a sessão
-if os.environ.get('VERCEL'):
-    DB_FILE = os.path.join('/tmp', 'denuncias_database.json')
-    ADMIN_CONFIG_FILE = os.path.join('/tmp', 'admin_config.json')
-else:
-    caminho_base = os.getcwd()
-    DB_FILE = os.path.join(caminho_base, 'denuncias_database.json')
-    ADMIN_CONFIG_FILE = os.path.join(caminho_base, 'admin_config.json')
-
 # --- INICIALIZAÇÃO DE SEGURANÇA ---
 def inicializar_admin_config():
-    if not os.path.exists(ADMIN_CONFIG_FILE):
+    # Agora verifica no banco de dados em vez do arquivo
+    if col_config.count_documents({"user": "admin"}) == 0:
         config_inicial = {"user": "admin", "pass": "2821"}
         try:
-            with open(ADMIN_CONFIG_FILE, 'w', encoding="utf-8") as f:
-                json.dump(config_inicial, f, ensure_ascii=False, indent=4)
+            col_config.insert_one(config_inicial)
         except: pass
 
 inicializar_admin_config()
@@ -68,14 +66,9 @@ def criptografar_dado(texto):
 
 def gerar_protocolo_sequencial():
     data_hoje = datetime.now(FUSO_BR).strftime('%Y%m%d')
-    contador = 1
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            try:
-                banco = json.load(f)
-                hoje_count = [d for d in banco if str(d.get('protocolo', '')).startswith(data_hoje)]
-                contador = len(hoje_count) + 1
-            except: pass
+    # Conta documentos que começam com a data de hoje no banco
+    regex = f"^{data_hoje}"
+    contador = col_denuncias.count_documents({"protocolo": {"$regex": regex}}) + 1
     return f"{data_hoje}-{str(contador).zfill(4)}"
 
 # ==========================================
@@ -90,14 +83,12 @@ def home():
 @app.route('/consultar/<prot>')
 def consultar(prot):
     if not verificar_licenca(): return "Indisponível", 403
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            banco = json.load(f)
-            for d in banco:
-                if d['protocolo'] == prot:
-                    resp = make_response(jsonify({"status": d['status']}))
-                    resp.set_cookie('ultimo_protocolo', prot, max_age=60*60*24*7) 
-                    return resp
+    # Busca no MongoDB
+    d = col_denuncias.find_one({"protocolo": prot})
+    if d:
+        resp = make_response(jsonify({"status": d['status']}))
+        resp.set_cookie('ultimo_protocolo', prot, max_age=60*60*24*7) 
+        return resp
     return jsonify({"status": "Nao encontrado"}), 404
 
 @app.route('/enviar', methods=['POST'])
@@ -128,15 +119,8 @@ def enviar():
             "parecer_comite": ""           
         }
         
-        banco = []
-        if os.path.exists(DB_FILE):
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                try: banco = json.load(f)
-                except: banco = []
-        
-        banco.append(nova_denuncia)
-        with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(banco, f, indent=2, ensure_ascii=False)
+        # Insere no MongoDB
+        col_denuncias.insert_one(nova_denuncia)
 
         resp = make_response(jsonify({"status": "sucesso", "protocolo": protocolo}))
         resp.set_cookie('ultimo_protocolo', protocolo, max_age=60*60*24*30)
@@ -147,11 +131,9 @@ def enviar():
 # [BLOCO 05]: GESTÃO E DASHBOARD
 # ==========================================
 def carregar_credenciais():
-    if os.path.exists(ADMIN_CONFIG_FILE):
-        try:
-            with open(ADMIN_CONFIG_FILE, 'r', encoding="utf-8") as f:
-                return json.load(f)
-        except: pass
+    cred = col_config.find_one({"user": "admin"})
+    if cred:
+        return {"user": cred['user'], "pass": cred['pass']}
     return {"user": "admin", "pass": "2821"}
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -173,27 +155,22 @@ def logout():
 @app.route('/dashboard')
 def dashboard():
     if not session.get('admin_logado'): return redirect(url_for('login'))
-    denuncias = []
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            try: denuncias = json.load(f)
-            except: pass
-    return render_template('dashboard.html', denuncias=denuncias[::-1])
+    # Busca todas as denúncias no banco, invertendo a ordem (mais recentes primeiro)
+    denuncias = list(col_denuncias.find({}, {'_id': 0}).sort("data", -1))
+    return render_template('dashboard.html', denuncias=denuncias)
 
 @app.route('/atualizar_denuncia', methods=['POST'])
 def atualizar():
     if not session.get('admin_logado'): return redirect(url_for('login'))
     prot = request.form.get('protocolo')
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            banco = json.load(f)
-        for d in banco:
-            if d['protocolo'] == prot:
-                d['status'] = request.form.get('status')
-                d['parecer_comite'] = request.form.get('parecer')
-                break
-        with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(banco, f, indent=2, ensure_ascii=False)
+    
+    col_denuncias.update_one(
+        {"protocolo": prot},
+        {"$set": {
+            "status": request.form.get('status'),
+            "parecer_comite": request.form.get('parecer')
+        }}
+    )
     return redirect(url_for('dashboard'))
 
 @app.route('/alterar_acesso', methods=['POST'])
@@ -201,21 +178,17 @@ def alterar_senha():
     if not session.get('admin_logado'): return redirect(url_for('login'))
     nova = request.form.get('nova_senha')
     if nova:
-        with open(ADMIN_CONFIG_FILE, 'w', encoding="utf-8") as f:
-            json.dump({"user": "admin", "pass": str(nova)}, f, indent=4)
+        col_config.update_one({"user": "admin"}, {"$set": {"pass": str(nova)}})
     return redirect(url_for('dashboard'))
 
 # ==========================================
-# [BLOCO 06]: DOSSIÊ DE IMPRESSÃO (HTML PRESERVADO)++++
+# [BLOCO 06]: DOSSIÊ DE IMPRESSÃO
 # ==========================================
 @app.route('/gestao/<prot>')
 def area_segura(prot):
     if not session.get('admin_logado'): return redirect(url_for('login'))
-    d = None
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            banco = json.load(f)
-            d = next((item for item in banco if item['protocolo'] == prot), None)
+    
+    d = col_denuncias.find_one({"protocolo": prot}, {'_id': 0})
     if not d: return "Não encontrado", 404
 
     id_seguro = "ID_SIGILOSO"
@@ -295,8 +268,6 @@ def area_segura(prot):
     </html>
     """
     return make_response(conteudo_html)
-
-app = app
 
 if __name__ == '__main__':
     app.run(debug=True)

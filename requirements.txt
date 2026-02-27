@@ -1,4 +1,5 @@
-flask
+Flask
+pymongo
+dnspython
 cryptography
 werkzeug
-resend
