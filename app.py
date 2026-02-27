@@ -22,6 +22,7 @@ app = Flask(__name__)
 app.secret_key = 'chave_seguranca_codetecx_2026' 
 
 # --- VARIÁVEIS GLOBAIS ---
+# Esta chave cifra o e-mail no JSON para que ninguém (nem invasores) leiam sem o sistema
 CHAVE_MESTRA = b'U2ZLBCXpcy_pEcsjdgCSxoZbYrbneHPDsSA47mso0xw='
 cipher_suite = Fernet(CHAVE_MESTRA)
 
@@ -30,7 +31,8 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 # --- CONFIGURAÇÃO DO RESEND (API) ---
 resend.api_key = os.environ.get("RESEND_API_KEY")
 
-# --- AJUSTE DE AMBIENTE (RENDER / GITHUB) ---
+# --- AJUSTE DE AMBIENTE LOCAL E NUVEM (RENDER) ---
+# Aqui garantimos que o sistema use apenas arquivos .json locais
 caminho_base = os.getcwd()
 UPLOAD_FOLDER = os.path.join(caminho_base, 'uploads')
 DATA_FOLDER = os.path.join(caminho_base, 'data')
@@ -40,55 +42,52 @@ ADMIN_CONFIG_FILE = os.path.join(caminho_base, 'admin_config.json')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(DATA_FOLDER, exist_ok=True)
 
-# --- CONFIGURAÇÕES DE ENVIO ---
+# --- CONFIGURAÇÕES DE ENVIO (FALLBACK SMTP) ---
 MEU_EMAIL_ENVIO = "suporte@codetecx.com"
 MINHA_SENHA_APP = "szqbymzenmtqfjvj" 
 
 # Destinatário oficial para alertas de sistema e licença
 EMAIL_ADMIN_SUPORTE = "camilameireles@se-pmmc.com.br"
-LISTA_ADMINS = [EMAIL_ADMIN_SUPORTE]
 
-# --- GARANTE QUE O ARQUIVO DE SENHA EXISTA ---
+# --- INICIALIZAÇÃO DE SEGURANÇA ---
 def inicializar_admin_config():
-    """ Cria o arquivo de senha inicial se não existir """
+    """ Cria a senha do painel /dashboard se o arquivo não existir """
     if not os.path.exists(ADMIN_CONFIG_FILE):
         config_inicial = {"user": "admin", "pass": "2821"}
         try:
             with open(ADMIN_CONFIG_FILE, 'w', encoding="utf-8") as f:
                 json.dump(config_inicial, f, ensure_ascii=False, indent=4)
-            print("✅ Configuração inicial Codetecx criada.")
+            print("✅ Configuração de acesso admin criada localmente.")
         except Exception as e:
             print(f"❌ Erro ao criar config: {e}")
 
 inicializar_admin_config()
 
-# --- TRAVA DE LICENCIAMENTO (BLOQUEIO POR FALTA DE PAGAMENTO) ---
+# --- TRAVA DE LICENCIAMENTO ---
 DATA_EXPIRACAO = "2026-12-24" 
 
 def verificar_licenca():
-    """ Verifica validade do sistema para exibição da tela de bloqueio """
+    """ Bloqueia o site caso a data atual ultrapasse a expiração """
     try:
         data_limite = datetime.strptime(DATA_EXPIRACAO, '%Y-%m-%d')
-        return datetime.now() <= data_limite
+        # Ajusta para comparar com a data atual de Brasília
+        agora = datetime.now(FUSO_BR).replace(tzinfo=None)
+        return agora <= data_limite
     except:
         return False
 
 def alertar_admin_bloqueio():
-    """ Envia alerta de expiração para Camila Meireles """
+    """ Envia e-mail para a Camila Meireles avisando sobre o bloqueio """
     try:
         resend.Emails.send({
             "from": "Segurança Sistema <suporte@codetecx.com>",
             "to": EMAIL_ADMIN_SUPORTE,
-            "subject": "⚠️ ALERTA CRÍTICO: Licença Expirada",
-            "html": f"""
-                <h3>Bloqueio de Sistema</h3>
-                <p>A licença de uso do Canal de Integridade (El Shadday/Codetecx) expirou em <b>{DATA_EXPIRACAO}</b>.</p>
-                <p>O acesso ao painel e novos relatos foram suspensos automaticamente.</p>
-            """
+            "subject": "⚠️ ALERTA: Licença do Canal de Integridade Expirada",
+            "html": f"<h3>Acesso Suspenso</h3><p>O sistema expirou em {DATA_EXPIRACAO}.</p>"
         })
     except: pass
 
-# --- TELA DE BLOQUEIO PROFISSIONAL ---
+# --- INTERFACE DE BLOQUEIO (HTML) ---
 HTML_BLOQUEIO = """
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -96,76 +95,59 @@ HTML_BLOQUEIO = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
-    <title>Validação de Sistema</title>
+    <title>Sistema Suspenso</title>
 </head>
-<body class="bg-slate-50 flex items-center justify-center min-h-screen p-6">
+<body class="bg-slate-900 flex items-center justify-center min-h-screen p-6">
     <div class="max-w-md w-full text-center space-y-6">
-        <div class="flex justify-center">
-            <div class="bg-red-100 p-5 rounded-full animate-pulse">
-                <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-            </div>
+        <div class="bg-red-500/10 p-6 rounded-full inline-block">
+            <svg class="w-16 h-16 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
         </div>
-        <h1 class="text-2xl font-black text-slate-800 uppercase italic">Codetecx - Bloqueio</h1>
-        <p class="text-slate-500 text-sm leading-relaxed">
-            Este módulo está suspenso devido à expiração da licença de uso ou pendência de sincronização.
-        </p>
-        <div class="bg-white p-6 rounded-[2rem] shadow-xl border border-slate-100">
-            <span class="inline-flex items-center px-4 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
-                Sistema Suspenso
-            </span>
+        <h1 class="text-3xl font-bold text-white">Licença Expirada</h1>
+        <p class="text-slate-400">O acesso a este Canal de Integridade foi suspenso automaticamente.</p>
+        <div class="p-4 bg-slate-800 rounded-xl border border-slate-700">
+            <p class="text-xs text-slate-500 uppercase tracking-widest">Código de Erro</p>
+            <p class="text-red-400 font-mono">ERR_LICENSE_EXPIRED_{DATA_EXPIRACAO}</p>
         </div>
-        <p class="text-[9px] text-slate-400 uppercase font-black tracking-tighter">
-            Contate o suporte técnico para regularizar o acesso.
-        </p>
+        <p class="text-sm text-slate-500">Contate o suporte técnico da Codetecx para renovação.</p>
     </div>
 </body>
 </html>
 """
 
-# --- SEGURANÇA DE ARQUIVOS ---
+# --- FILTROS DE SEGURANÇA ---
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    return jsonify({"status": "erro", "msg": "Arquivo muito grande! Limite: 16MB."}), 413
+    return jsonify({"status": "erro", "msg": "Arquivo muito grande (Máx 16MB)"}), 413
 
 # ==========================================
 # [BLOCO 02]: SEGURANÇA E CRIPTOGRAFIA (REVERSÍVEL)
 # ==========================================
 def criptografar_dado(texto):
-    """ Criptografia Reversível (AES-256) """
+    """ Protege o e-mail do denunciante no arquivo JSON """
     try:
-        if not texto: return "ANONIMO"
-        if isinstance(texto, bytes): texto = texto.decode('utf-8', errors='ignore')
-        texto = str(texto).strip()
-        if texto.upper() == "ANONIMO": return "ANONIMO"
-        if "@" not in texto: return "ANONIMO"
-        texto_preparado = texto.lower().encode('utf-8')
+        if not texto or "@" not in str(texto): return "ANONIMO"
+        texto_preparado = str(texto).lower().strip().encode('utf-8')
         return cipher_suite.encrypt(texto_preparado).decode('utf-8')
-    except Exception as e:
-        print("❌ ERRO criptografar_dado:", e)
+    except:
         return "ANONIMO"
 
 def gerar_id_criptografico(dado_criptografado):
-    """ Gera um ID visual curto baseado no e-mail criptografado """
-    try:
-        if not dado_criptografado: return "IDENTIDADE PRESERVADA"
-        if isinstance(dado_criptografado, bytes): dado_criptografado = dado_criptografado.decode('utf-8', errors='ignore')
-        dado_criptografado = str(dado_criptografado)
-        if "ANONIMO" in dado_criptografado.upper() or len(dado_criptografado) < 22: return "IDENTIDADE PRESERVADA"
-        fragmento = dado_criptografado[10:22].upper().replace('-', 'X').replace('_', 'Y')
-        return f"ID_SEGURANCA_{fragmento}"
-    except Exception as e:
-        print("❌ ERRO gerar_id_criptografico:", e)
+    """ Cria o ID visual para o Dossiê impresso """
+    if not dado_criptografado or "ANONIMO" in str(dado_criptografado): 
         return "IDENTIDADE PRESERVADA"
+    # Pega um pedaço do código criptografado para gerar um ID único e secreto
+    fragmento = hashlib.md5(str(dado_criptografado).encode()).hexdigest().upper()[:12]
+    return f"ID_SEGURANCA_{fragmento}"
 
 def gerar_protocolo_sequencial():
-    """ Gera protocolo baseado na data: AAAAMMDD-0001 """
-    data_hoje = datetime.now().strftime('%Y%m%d')
+    """ Gera o número do chamado: AAAAMMDD-XXXX """
+    data_hoje = datetime.now(FUSO_BR).strftime('%Y%m%d')
     contador = 1
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r", encoding="utf-8") as f:
@@ -173,9 +155,7 @@ def gerar_protocolo_sequencial():
                 banco = json.load(f)
                 hoje_count = [d for d in banco if str(d.get('protocolo', '')).startswith(data_hoje)]
                 contador = len(hoje_count) + 1
-            except Exception as e:
-                print("Erro ao ler banco de dados:", e)
-                contador = 1
+            except: pass
     return f"{data_hoje}-{str(contador).zfill(4)}"
 
 # ==========================================
@@ -183,42 +163,38 @@ def gerar_protocolo_sequencial():
 # ==========================================
 @app.route('/')
 def home():
+    """ Página de entrada - Verifica licença antes de carregar """
     if not verificar_licenca():
         alertar_admin_bloqueio() 
         return HTML_BLOQUEIO, 403
     ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
     return render_template('denuncia.html', ultimo=ultimo_visto)
 
-@app.route('/baixar/<setor>/<nome>')
-def baixar(setor, nome):
-    caminho_setor = os.path.join(UPLOAD_FOLDER, secure_filename(setor))
-    return send_from_directory(caminho_setor, nome)
-
 @app.route('/consultar/<prot>')
 def consultar(prot):
-    if not verificar_licenca(): return "Serviço Indisponível", 403
-    status_encontrado = None
+    """ Permite ao cidadão ver se a denúncia já foi analisada """
+    if not verificar_licenca(): return "Indisponível", 403
+    
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r", encoding="utf-8") as f:
-            banco = json.load(f)
-            for d in banco:
-                if d['protocolo'] == prot:
-                    status_encontrado = d['status']
-                    break
-    if status_encontrado:
-        resp = make_response(jsonify({"status": status_encontrado}))
-        resp.set_cookie('ultimo_protocolo', prot, max_age=60*60*24*7) 
-        return resp
-    return jsonify({"status": "Nao encontrado"}), 404
+            try:
+                banco = json.load(f)
+                for d in banco:
+                    if d['protocolo'] == prot:
+                        resp = make_response(jsonify({"status": d['status']}))
+                        # Salva o protocolo no navegador do usuário por 7 dias
+                        resp.set_cookie('ultimo_protocolo', prot, max_age=60*60*24*7) 
+                        return resp
+            except: pass
+    return jsonify({"status": "Não encontrado"}), 404
 
 
 # ==========================================
-# [BLOCO 04]: MOTOR DE ENVIO (EXCLUSIVO DENUNCIANTE)
+# [BLOCO 04]: MOTOR DE ENVIO E ROTA DE PROCESSAMENTO
 # ==========================================
 
 def disparar_email_seguro(destinatario, assunto, corpo_html):
     """ Tenta Resend primeiro; se falhar, usa SMTP como Fallback """
-    # 1. TENTATIVA VIA RESEND (API)
     try:
         resend.Emails.send({
             "from": "Canal de Integridade <suporte@codetecx.com>",
@@ -229,9 +205,8 @@ def disparar_email_seguro(destinatario, assunto, corpo_html):
         print(f"✅ Sucesso via Resend: {destinatario}")
         return True
     except Exception as e_resend:
-        print(f"⚠️ Resend falhou (Provável Sandbox/DNS). Tentando SMTP... Erro: {e_resend}")
+        print(f"⚠️ Resend falhou. Tentando SMTP... Erro: {e_resend}")
         
-        # 2. TENTATIVA VIA SMTP (GOOGLE WORKSPACE) - O SEU PLANO B SEGURO
         try:
             server = smtplib.SMTP("smtp.gmail.com", 587)
             server.starttls()
@@ -245,46 +220,79 @@ def disparar_email_seguro(destinatario, assunto, corpo_html):
             
             server.sendmail(MEU_EMAIL_ENVIO, destinatario, msg.as_string())
             server.quit()
-            print(f"✅ Sucesso via SMTP (Google): {destinatario}")
+            print(f"✅ Sucesso via SMTP: {destinatario}")
             return True
         except Exception as e_smtp:
-            print(f"❌ AMBOS OS MÉTODOS FALHARAM para {destinatario}: {e_smtp}")
+            print(f"❌ Falha crítica de envio: {e_smtp}")
             return False
 
 def enviar_emails_async(unidade, data_hora, protocolo, email_bruto):
-    """ Gerencia os disparos APENAS para o Denunciante (Cidadão) """
-    
-    print(f"📧 Processando protocolo: {protocolo}")
-
-    # --- DISPARO EXCLUSIVO PARA O CIDADÃO ---
-    # Só dispara se o e-mail não for nulo e for um formato válido
+    """ Disparo exclusivo para o cidadão (Denunciante) """
     if email_bruto and "@" in str(email_bruto):
-        destinatario_cidadao = str(email_bruto).strip()
-        
-        corpo_cid = f"""
+        destinatario = str(email_bruto).strip()
+        corpo = f"""
             <div style="font-family: sans-serif; padding: 20px; color: #333; border: 1px solid #eee; border-radius: 8px;">
                 <h3 style="color: #2c3e50;">Confirmação de Registro</h3>
-                <p>Olá,</p>
-                <p>Seu relato foi registrado com sucesso em nosso <strong>Canal de Integridade</strong>.</p>
-                <div style="background-color: #f8fafc; padding: 15px; border-radius: 5px; border-left: 4px solid #2c3e50; margin: 20px 0;">
-                    <strong>PROTOCOLO PARA CONSULTA:</strong> {protocolo}<br>
+                <p>Seu relato foi registrado com sucesso.</p>
+                <div style="background-color: #f8fafc; padding: 15px; border-left: 4px solid #2c3e50; margin: 20px 0;">
+                    <strong>PROTOCOLO:</strong> {protocolo}<br>
                     <strong>DATA:</strong> {data_hora}<br>
                     <strong>UNIDADE:</strong> {unidade}
                 </div>
-                <p>Guarde este número para acompanhar o andamento do seu relato através do sistema.</p>
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                <p style="font-size: 12px; color: #888;">Atenciosamente,<br><strong>Comitê de Ética e Integridade</strong></p>
+                <p>Use o protocolo para acompanhar o andamento no site.</p>
+                <p style="font-size: 12px; color: #888;">Atenciosamente, Comitê de Ética</p>
             </div>
         """
+        disparar_email_seguro(destinatario, f"Protocolo #{protocolo} Recebido", corpo)
+
+@app.route('/enviar', methods=['POST'])
+def enviar():
+    """ Rota que processa a denúncia e salva no JSON LOCAL """
+    if not verificar_licenca():
+        return jsonify({"status": "erro", "msg": "Licença expirada"}), 403
+
+    unidade = request.form.get('unidade')
+    categoria = request.form.get('categoria')
+    relato = request.form.get('relato')
+    email_bruto = request.form.get('email')
+    
+    protocolo = gerar_protocolo_sequencial()
+    data_hora = datetime.now(FUSO_BR).strftime('%d/%m/%Y %H:%M:%S')
+    
+    # 1. Criar objeto da denúncia
+    nova_denuncia = {
+        "protocolo": protocolo,
+        "data": data_hora,
+        "unidade": unidade,
+        "categoria": categoria,
+        "relato": relato,
+        "email_contato": criptografar_dado(email_bruto),
+        "status": "Em Análise",
+        "parecer_comite": ""
+    }
+
+    # 2. Salvar EXCLUSIVAMENTE no arquivo JSON (Sem Railway/SQL)
+    try:
+        banco = []
+        if os.path.exists(DB_FILE):
+            with open(DB_FILE, 'r', encoding='utf-8') as f:
+                try: banco = json.load(f)
+                except: banco = []
         
-        # Dispara para o cidadão usando o motor híbrido
-        disparar_email_seguro(destinatario_cidadao, f"Confirmação de Registro - Protocolo #{protocolo}", corpo_cid)
-    else:
-        print(f"ℹ️ Protocolo {protocolo}: Relato anônimo ou e-mail ausente. Nenhum disparo realizado.")
+        banco.append(nova_denuncia)
+        
+        with open(DB_FILE, 'w', encoding='utf-8') as f:
+            json.dump(banco, f, indent=2, ensure_ascii=False)
+        print(f"✅ Protocolo {protocolo} salvo no banco local.")
+    except Exception as e:
+        print(f"❌ Erro ao salvar denúncia: {e}")
+        return jsonify({"status": "erro"}), 500
 
-# No seu app.route('/enviar'), o chamado permanece:
-# threading.Thread(target=enviar_emails_async, args=(unidade, data_hora, protocolo, email_bruto), daemon=True).start()
+    # 3. Disparo de e-mail assíncrono
+    if email_bruto and "@" in str(email_bruto):
+        threading.Thread(target=enviar_emails_async, args=(unidade, data_hora, protocolo, email_bruto), daemon=True).start()
 
+    return jsonify({"status": "sucesso", "protocolo": protocolo})
 # ==========================================
 # [BLOCO 05]: GESTÃO, DASHBOARD E PARECER
 # ==========================================
@@ -301,12 +309,13 @@ def carregar_credenciais():
 def enviar_email_conclusao(email_criptografado, protocolo, parecer):
     """ Envia o parecer final exclusivamente para o denunciante """
     try:
-        # Se for anônimo, não há o que enviar
-        if not email_criptografado or "ANONIMO" in email_criptografado: 
+        # 1. Validação de Anonimato
+        if not email_criptografado or "ANONIMO" in str(email_criptografado).upper(): 
             print(f"ℹ️ Protocolo {protocolo}: Conclusão sem e-mail (Anônimo).")
             return False
         
-        # Descriptografa o e-mail real do cidadão
+        # 2. Descriptografia do e-mail real
+        # Importante: O e-mail foi salvo com cipher_suite.encrypt no envio
         email_real = cipher_suite.decrypt(email_criptografado.encode()).decode().strip()
         
         assunto = f"CONCLUSÃO DE RELATO: Protocolo #{protocolo}"
@@ -314,10 +323,10 @@ def enviar_email_conclusao(email_criptografado, protocolo, parecer):
             <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px; color: #333;">
                 <h3 style="color: #2c3e50;">Atualização de Protocolo - Canal de Integridade</h3>
                 <p>Prezado(a),</p>
-                <p>Informamos que o seu relato registrado sob o protocolo <strong>#{protocolo}</strong> foi concluído e finalizado pelo Comitê de Ética.</p>
+                <p>Informamos que o seu relato registrado sob o protocolo <strong>#{protocolo}</strong> foi concluído.</p>
                 
                 <div style="background-color: #f8fafc; padding: 15px; border-left: 4px solid #1e293b; margin: 20px 0;">
-                    <strong style="color: #1e293b;">PARECER FINAL:</strong><br>
+                    <strong style="color: #1e293b;">PARECER FINAL DO COMITÊ:</strong><br>
                     <p style="white-space: pre-wrap;">{parecer}</p>
                 </div>
                 
@@ -327,7 +336,7 @@ def enviar_email_conclusao(email_criptografado, protocolo, parecer):
             </div>
         """
         
-        # Dispara usando o motor seguro (Resend com Fallback SMTP)
+        # 3. Disparo via motor híbrido (Resend/SMTP)
         return disparar_email_seguro(email_real, assunto, corpo_html)
         
     except Exception as e:
@@ -354,7 +363,7 @@ def logout():
 
 @app.route('/dashboard')
 def dashboard():
-    """ Painel principal: admins acompanham tudo por aqui, sem receber e-mails """
+    """ Painel administrativo: lê o arquivo JSON local """
     if not session.get('admin_logado'): return redirect(url_for('login'))
     denuncias_total = []
     if os.path.exists(DB_FILE):
@@ -363,19 +372,24 @@ def dashboard():
                 denuncias_total = json.load(f)
             except: 
                 denuncias_total = []
+    # Retorna a lista invertida (mais recentes primeiro)
     return render_template('dashboard.html', denuncias=denuncias_total[::-1])
 
 @app.route('/atualizar_denuncia', methods=['POST'])
 def atualizar():
-    """ Atualiza status e parecer. Se finalizado, dispara e-mail para o cidadão """
+    """ Atualiza status e dispara e-mail se for 'Finalizada' """
     if not session.get('admin_logado'): return redirect(url_for('login'))
+    
     prot = request.form.get('protocolo')
     novo_status = request.form.get('status')
     novo_parecer = request.form.get('parecer')
     
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r", encoding="utf-8") as f:
-            banco = json.load(f)
+            try:
+                banco = json.load(f)
+            except:
+                return "Erro ao carregar banco", 500
         
         email_alvo = None
         for d in banco:
@@ -388,9 +402,13 @@ def atualizar():
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(banco, f, indent=2, ensure_ascii=False)
         
-        # DISPARO PARA O CIDADÃO: Apenas se finalizada e não for anônimo
+        # Só dispara e-mail se o status for alterado para 'Finalizada'
         if novo_status == "Finalizada" and email_alvo and email_alvo != "ANONIMO":
-            threading.Thread(target=enviar_email_conclusao, args=(email_alvo, prot, novo_parecer), daemon=True).start()
+            threading.Thread(
+                target=enviar_email_conclusao, 
+                args=(email_alvo, prot, novo_parecer), 
+                daemon=True
+            ).start()
             
     return redirect(url_for('dashboard'))
 
@@ -406,7 +424,6 @@ def alterar_senha():
         except: 
             return "Erro ao salvar novas credenciais", 500
     return "Erro: Senha não pode ser vazia", 400
-
 # ==========================================
 # [BLOCO 06]: DOSSIÊ DE IMPRESSÃO (ESTILO FOLHA A4)
 # ==========================================
