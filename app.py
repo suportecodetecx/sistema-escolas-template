@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, make_response, session, redirect, url_for
+from flask import flash, redirect, url_for, request, session # Certifique-se de que 'flash' está importado
 import json, os, hashlib, base64
 from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
@@ -174,10 +175,16 @@ def atualizar():
 @app.route('/alterar_acesso', methods=['POST'])
 def alterar_senha():
     if not session.get('admin_logado'): return redirect(url_for('login'))
+    
+    user = request.form.get('novo_user') # Pegando o usuário também
     nova = request.form.get('nova_senha')
+    
     if nova:
-        col_config.update_one({"user": "admin"}, {"$set": {"pass": str(nova)}})
-    return redirect(url_for('dashboard'))
+        # Atualiza usuário e senha
+        col_config.update_one({"user": "admin"}, {"$set": {"user": user, "pass": str(nova)}})
+        flash('Acesso atualizado com sucesso!', 'success') # <--- Categoria 'success'
+        return "OK", 200 # Retorna OK para o JavaScript saber que deu certo
+    return "Erro", 400
 
 # ==========================================
 # [BLOCO 06]: DOSSIÊ DE IMPRESSÃO
