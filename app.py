@@ -56,21 +56,13 @@ HTML_BLOQUEIO = """
 </html>
 """
 
-# ==========================================
-# [BLOCO 02]: SEGURANÇA E AUXILIARES
-# ==========================================
-def criptografar_dado(texto):
-    if not texto or "@" not in str(texto): return "ANONIMO"
-    texto_preparado = str(texto).lower().strip().encode()
-    return cipher_suite.encrypt(texto_preparado).decode()
 
 def gerar_protocolo_sequencial():
     data_hoje = datetime.now(FUSO_BR).strftime('%Y%m%d')
-    # Conta documentos que começam com a data de hoje no banco
     regex = f"^{data_hoje}"
     contador = col_denuncias.count_documents({"protocolo": {"$regex": regex}}) + 1
     return f"{data_hoje}-{str(contador).zfill(4)}"
-
+# ==========================================
 # ==========================================
 # [BLOCO 03]: ROTAS DO USUÁRIO
 # ==========================================
@@ -98,6 +90,7 @@ def enviar():
         agora = datetime.now(FUSO_BR)
         protocolo = gerar_protocolo_sequencial()
         
+        # Tratamento de anexo
         arquivo = request.files.get('arquivo')
         conteudo_anexo_final = "Nenhum"
         if arquivo and arquivo.filename != '':
@@ -105,6 +98,11 @@ def enviar():
             if extensao in ['png', 'jpg', 'jpeg', 'webp']:
                 imagem_base64 = base64.b64encode(arquivo.read()).decode('utf-8')
                 conteudo_anexo_final = f"data:image/{extensao};base64,{imagem_base64}"
+
+        # Captura o e-mail em texto simples
+        # Se o usuário não preencher, salvamos como "ANÔNIMO"
+        email_bruto = request.form.get('email_opcional', '').strip()
+        email_final = email_bruto if email_bruto else "ANÔNIMO"
 
         nova_denuncia = {
             "protocolo": protocolo,
@@ -114,7 +112,7 @@ def enviar():
             "assunto": request.form.get('titulo'),
             "relato": request.form.get('relato'),
             "anexo": conteudo_anexo_final,
-            "email_contato": criptografar_dado(request.form.get('email_opcional')),
+            "email_contato": email_final, # TEXTO SIMPLES PARA O DOSSIÊ
             "status": "Recebido / Em Triagem",
             "parecer_comite": ""           
         }
@@ -191,7 +189,10 @@ def area_segura(prot):
     d = col_denuncias.find_one({"protocolo": prot}, {'_id': 0})
     if not d: return "Não encontrado", 404
 
-    id_seguro = "ID_SIGILOSO"
+    # Ajuste do Email no Dossiê
+    email_banco = d.get('email_contato', 'ANÔNIMO')
+    id_seguro = email_banco if email_banco != "ANÔNIMO" else "SIGILOSO"
+    
     token_auth = hashlib.md5(f"{prot}{d['data']}".encode()).hexdigest().upper()[:20]
     midia_html = f"""<div class="container-midia"><div class="secao-titulo">Anexo Enviado</div><div class="caixa-imagem"><img src="{d['anexo']}" class="img-anexo"></div></div>""" if d.get('anexo') and d['anexo'] != "Nenhum" else ""
 
@@ -234,7 +235,7 @@ def area_segura(prot):
                 <tr><th>DATA REGISTRO:</th><td>{d['data']}</td></tr>
                 <tr><th>UNIDADE:</th><td>{d['unidade']}</td></tr>
                 <tr><th>CATEGORIA:</th><td>{d['categoria']}</td></tr>
-                <tr><th>ID SIGILOSO:</th><td><code>{id_seguro}</code></td></tr>
+                <tr><th>ID DENUNCIANTE:</th><td><code>{id_seguro}</code></td></tr>
                 <tr><th>STATUS ATUAL:</th><td>{d.get('status', 'EM ANÁLISE')}</td></tr>
             </table>
             <div class="secao-titulo">1. Relato dos Fatos</div>
