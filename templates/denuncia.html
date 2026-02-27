@@ -342,13 +342,26 @@
             window.scrollTo(0, 0);
         }
 
-        function labelArquivo(input) {
-            const label = document.getElementById('file-label');
-            if (input.files.length > 0) {
-                label.innerText = "✓ SELECIONADO: " + input.files[0].name.toUpperCase();
-                label.classList.add('text-orange-600');
-            }
+      function labelArquivo(input) {
+    const label = document.getElementById('file-label');
+    const arquivo = input.files[0];
+    const limiteMB = 10; // Limite de 10MB
+
+    if (arquivo) {
+        // Validação de tamanho no navegador
+        if (arquivo.size > limiteMB * 1024 * 1024) {
+            alert("ARQUIVO MUITO GRANDE!\nO limite máximo é de " + limiteMB + "MB.\nPor favor, selecione uma imagem mais leve.");
+            input.value = ""; // Limpa a seleção do arquivo
+            label.innerText = "Anexar Evidências";
+            label.classList.remove('text-orange-600');
+            return;
         }
+
+        // Se estiver tudo ok, mostra o nome do arquivo
+        label.innerText = "✓ SELECIONADO: " + arquivo.name.toUpperCase();
+        label.classList.add('text-orange-600');
+    }
+}
 
         // LÓGICA DE ENVIO E ABERTURA DO MODAL DE PROTOCOLO
        document.getElementById('formMaster').onsubmit = async (e) => {

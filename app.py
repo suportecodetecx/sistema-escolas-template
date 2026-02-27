@@ -22,7 +22,7 @@ col_config = db['config_admin']
 # --- VARIÁVEIS GLOBAIS E CRIPTOGRAFIA ---
 CHAVE_MESTRA = b'U2ZLBCXpcy_pEcsjdgCSxoZbYrbneHPDsSA47mso0xw='
 cipher_suite = Fernet(CHAVE_MESTRA)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 
 
 # --- INICIALIZAÇÃO DE SEGURANÇA ---
 def inicializar_admin_config():
