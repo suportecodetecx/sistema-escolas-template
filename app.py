@@ -325,5 +325,4 @@ def area_segura(prot):
     return make_response(conteudo_html)
 
 if __name__ == '__main__':
-    # O use_reloader=False evita o erro de soquete no Windows
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True)
