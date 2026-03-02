@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Canal de Integridade | El Shadday</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap"
         rel="stylesheet">
     <style>
@@ -130,24 +131,31 @@
                         </div>
                         <h2 class="text-2xl font-black text-blue-900 uppercase italic">Segurança e sigilo Absoluto</h2>
                         <p class="text-slate-500 mt-3 text-sm leading-relaxed max-w-md mx-auto">
-                            Em conformidade com a <span class="font-bold text-blue-900">Lei 14.457/22</span> e a <span class="font-bold text-blue-900">NR-1</span>, garantimos o <span class="font-bold text-blue-900">sigilo absoluto</span> e o tratamento de dados conforme a <span class="font-bold text-blue-900">LGPD</span>.
+                            Em conformidade com a <span class="font-bold text-blue-900">Lei 14.457/22</span> e a <span
+                                class="font-bold text-blue-900">NR-1</span>, garantimos o <span
+                                class="font-bold text-blue-900">sigilo absoluto</span> e o tratamento de dados conforme
+                            a <span class="font-bold text-blue-900">LGPD</span>.
                         </p>
                     </div>
 
-                    <div id="termo-container" class="mb-10 p-6 bg-slate-50 rounded-3xl border-2 border-transparent transition-all">
-    <label class="flex items-start gap-4 cursor-pointer">
-        <input type="checkbox" id="checkTermos" class="mt-1 w-6 h-6 accent-orange-600 rounded-lg">
-        <span class="text-sm font-bold text-slate-600 leading-snug">
-            Li e concordo com a 
-            <a href="/politica-privacidade" target="_blank" class="text-orange-600 underline hover:text-orange-700 transition-colors">
-                Política de Privacidade
-            </a>. 
-            Eu compreendo que este canal é destinado a relatos sérios e concordo com os termos de sigilo.
-        </span>
-    </label>
-    <p id="error-check" class="text-red-500 text-[10px] font-black uppercase mt-3 hidden">
-        ⚠️ Por favor, aceite os termos.
-    </p></div> 
+                    <div id="termo-container"
+                        class="mb-10 p-6 bg-slate-50 rounded-3xl border-2 border-transparent transition-all">
+                        <label class="flex items-start gap-4 cursor-pointer">
+                            <input type="checkbox" id="checkTermos" class="mt-1 w-6 h-6 accent-orange-600 rounded-lg">
+                            <span class="text-sm font-bold text-slate-600 leading-snug">
+                                Li e concordo com a
+                                <a href="/politica-privacidade" target="_blank"
+                                    class="text-orange-600 underline hover:text-orange-700 transition-colors">
+                                    Política de Privacidade
+                                </a>.
+                                Eu compreendo que este canal é destinado a relatos sérios e concordo com os termos de
+                                sigilo.
+                            </span>
+                        </label>
+                        <p id="error-check" class="text-red-500 text-[10px] font-black uppercase mt-3 hidden">
+                            ⚠️ Por favor, aceite os termos.
+                        </p>
+                    </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <button onclick="validarEProsseguir()"
@@ -228,14 +236,14 @@
                             </div>
 
                             <div class="email-box-clean p-6 rounded-[2rem] shadow-sm">
-    <label class="block text-[12px] font-black text-slate-500 uppercase mb-2">
-        E-mail para Retorno (Opcional)
-    </label>
+                                <label class="block text-[12px] font-black text-slate-500 uppercase mb-2">
+                                    E-mail para Retorno (Opcional)
+                                </label>
 
-    <input type="email" name="email_opcional" 
-        placeholder="Seus dados são tratados com sigilo absoluto pelo Comitê de Integridade"
-        class="w-full bg-transparent border-b-2 border-slate-200 py-2 outline-none focus:border-blue-900 font-bold text-sm placeholder:font-normal placeholder:text-slate-400 transition-all">
-</div>
+                                <input type="email" name="email_opcional"
+                                    placeholder="Seus dados são tratados com sigilo absoluto pelo Comitê de Integridade"
+                                    class="w-full bg-transparent border-b-2 border-slate-200 py-2 outline-none focus:border-blue-900 font-bold text-sm placeholder:font-normal placeholder:text-slate-400 transition-all">
+                            </div>
 
                             <div class="p-6 border-2 border-dashed border-slate-200 rounded-[2rem] text-center hover:border-orange-400 transition-all cursor-pointer bg-slate-50"
                                 onclick="document.getElementById('file-input').click()">
@@ -243,6 +251,9 @@
                                     onchange="labelArquivo(this)">
                                 <span id="file-label" class="text-xs font-black text-slate-400 uppercase block">Anexar
                                     Evidências</span>
+                                <div id="loading-face"
+                                    class="hidden mt-2 text-[10px] font-bold text-blue-600 animate-pulse uppercase">
+                                    Analisando privacidade da imagem...</div>
                             </div>
                         </div>
 
@@ -265,7 +276,8 @@
                 </svg>
             </div>
             <h2 class="text-2xl font-black text-blue-900 uppercase italic mb-2">Enviado com Sucesso!</h2>
-            <p class="text-slate-500 text-[10px] font-bold uppercase mb-6 tracking-widest">Guarde seu protocolo: ele é necessário para acompanhar sua manifestação.</p>
+            <p class="text-slate-500 text-[10px] font-bold uppercase mb-6 tracking-widest">Guarde seu protocolo: ele é
+                necessário para acompanhar sua manifestação.</p>
 
             <div class="bg-slate-100 p-6 rounded-3xl mb-8 border-2 border-dashed border-slate-300">
                 <span id="res-protocolo" class="text-3xl font-black text-blue-900 tracking-tighter">---</span>
@@ -318,6 +330,18 @@
     </div>
 
     <script>
+        // CARREGAR MODELOS DE IA AO INICIAR O SITE (ESSENCIAL)
+        async function loadModels() {
+            try {
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                console.log("Modelos de IA carregados com sucesso.");
+            } catch (err) {
+                console.error("Falha ao carregar modelos de IA:", err);
+            }
+        }
+        loadModels();
+
         window.addEventListener('load', function () {
             if (!localStorage.getItem('cookiesAceitos')) {
                 document.getElementById('cookie-banner').classList.remove('hidden');
@@ -342,57 +366,81 @@
             window.scrollTo(0, 0);
         }
 
-      function labelArquivo(input) {
-    const label = document.getElementById('file-label');
-    const arquivo = input.files[0];
-    const limiteMB = 10; // Limite de 10MB
+        // LÓGICA DE BLOQUEIO DE ROSTOS (LGPD)
+        async function labelArquivo(input) {
+            const label = document.getElementById('file-label');
+            const loader = document.getElementById('loading-face');
+            const arquivo = input.files[0];
+            const limiteMB = 10;
 
-    if (arquivo) {
-        // Validação de tamanho no navegador
-        if (arquivo.size > limiteMB * 1024 * 1024) {
-            alert("ARQUIVO MUITO GRANDE!\nO limite máximo é de " + limiteMB + "MB.\nPor favor, selecione uma imagem mais leve.");
-            input.value = ""; // Limpa a seleção do arquivo
-            label.innerText = "Anexar Evidências";
-            label.classList.remove('text-orange-600');
-            return;
+            if (!arquivo) return;
+
+            // 1. Validação Básica de Tamanho
+            if (arquivo.size > limiteMB * 1024 * 1024) {
+                alert("ARQUIVO MUITO GRANDE!\nO limite máximo é de " + limiteMB + "MB.");
+                input.value = "";
+                label.innerText = "Anexar Evidências";
+                label.classList.remove('text-orange-600');
+                return;
+            }
+
+            // 2. DETECÇÃO DE ROSTO (CONFORMIDADE LGPD)
+            loader.classList.remove('hidden');
+            label.innerText = "ANALISANDO PRIVACIDADE...";
+
+            try {
+                const img = await faceapi.bufferToImage(arquivo);
+                const detections = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions());
+
+                if (detections.length > 0) {
+                    // BLOQUEIO REAL: Limpa o input e avisa o usuário
+                    alert("⚠️ BLOQUEIO DE SEGURANÇA (LGPD):\n\nDetectamos rostos ou pessoas nesta imagem. \n\nPara proteger a privacidade dos envolvidos e cumprir com a Lei Geral de Proteção de Dados (LGPD), este canal NÃO aceita fotos contendo rostos identificáveis.\n\nPor favor, anexe apenas fotos de locais, documentos ou objetos onde não apareçam pessoas.");
+
+                    input.value = ""; // RESETA O CAMPO
+                    label.innerText = "Anexar Evidências";
+                    label.classList.remove('text-orange-600');
+                } else {
+                    // SE NÃO TIVER ROSTO, ACEITA O ARQUIVO
+                    label.innerText = "✓ SELECIONADO: " + arquivo.name.toUpperCase();
+                    label.classList.add('text-orange-600');
+                }
+            } catch (err) {
+                console.warn("Erro temporário na análise de IA. Prosseguindo com cautela.", err);
+                label.innerText = "✓ SELECIONADO: " + arquivo.name.toUpperCase();
+                label.classList.add('text-orange-600');
+            } finally {
+                loader.classList.add('hidden');
+            }
         }
 
-        // Se estiver tudo ok, mostra o nome do arquivo
-        label.innerText = "✓ SELECIONADO: " + arquivo.name.toUpperCase();
-        label.classList.add('text-orange-600');
-    }
-}
+        document.getElementById('formMaster').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnEnviar');
+            btn.innerText = "ENVIANDO...";
+            btn.disabled = true;
 
-        // LÓGICA DE ENVIO E ABERTURA DO MODAL DE PROTOCOLO
-       document.getElementById('formMaster').onsubmit = async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('btnEnviar');
-    btn.innerText = "ENVIANDO...";
-    btn.disabled = true;
+            const fd = new FormData(e.target);
+            try {
+                const res = await fetch('/enviar', { method: 'POST', body: fd });
+                const data = await res.json();
 
-    const fd = new FormData(e.target);
-    try {
-        const res = await fetch('/enviar', { method: 'POST', body: fd });
-        const data = await res.json();
-
-        if (res.ok && data.status === 'sucesso') {
-            document.getElementById('res-protocolo').innerText = data.protocolo;
-            const modalSucesso = document.getElementById('step3');
-            modalSucesso.style.display = 'flex'; 
-            modalSucesso.classList.remove('hidden');
-            e.target.reset();
-        } else {
-            // Isso aqui vai mostrar o seu "Arquivo muito grande!" se for o caso ++++
-            alert("Atenção: " + (data.msg || "Erro no servidor"));
-            btn.disabled = false;
-            btn.innerText = "Enviar Comunicação";
-        }
-    } catch (err) {
-        alert("Erro de conexão com o Railway.");
-        btn.disabled = false;
-        btn.innerText = "Enviar Comunicação";
-    }
-};
+                if (res.ok && data.status === 'sucesso') {
+                    document.getElementById('res-protocolo').innerText = data.protocolo;
+                    const modalSucesso = document.getElementById('step3');
+                    modalSucesso.style.display = 'flex';
+                    modalSucesso.classList.remove('hidden');
+                    e.target.reset();
+                } else {
+                    alert("Atenção: " + (data.msg || "Erro no servidor"));
+                    btn.disabled = false;
+                    btn.innerText = "Enviar Comunicação";
+                }
+            } catch (err) {
+                alert("Erro de conexão com o servidor.");
+                btn.disabled = false;
+                btn.innerText = "Enviar Comunicação";
+            }
+        };
 
         function abrirModalConsulta() {
             document.getElementById('modalConsulta').style.display = 'flex';
