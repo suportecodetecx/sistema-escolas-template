@@ -56,6 +56,35 @@
         .table-view.hidden {
             display: none;
         }
+
+        /* Estilos do Menu de Ajuda */
+        #support-menu {
+            display: none;
+            position: absolute;
+            top: 60px;
+            right: 0;
+            width: 320px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            z-index: 100;
+        }
+
+        #support-menu.active {
+            display: block;
+        }
+
+        .option-item {
+            padding: 12px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .option-item:hover {
+            background: #f8fafc;
+        }
     </style>
 </head>
 
@@ -71,20 +100,63 @@
                         class="text-blue-600">Integridade</span></span>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 relative">
+                <button onclick="toggleSupport()"
+                    class="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all border border-slate-200">
+                    <i data-lucide="help-circle" class="w-4 h-4"></i> AJUDA / SUPORTE
+                </button>
+
                 <button onclick="toggleView()" id="btnViewToggle"
                     class="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-blue-100 transition-all border border-blue-200">
                     <i data-lucide="layout-dashboard" class="w-4 h-4"></i> EXIBIR DASHBOARD
                 </button>
+
                 <button onclick="toggleConfig()"
                     class="text-slate-400 hover:text-blue-600 transition-all p-2 rounded-lg hover:bg-slate-50"
                     title="Configurações">
                     <i data-lucide="settings" class="w-5 h-5"></i>
                 </button>
+
                 <a href="/logout"
                     class="text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg transition text-xs font-bold flex items-center gap-1">
                     <i data-lucide="log-out" class="w-4 h-4"></i> SAIR
                 </a>
+
+                <div id="support-menu" class="overflow-hidden">
+                    <div class="bg-blue-600 p-4 text-white">
+                        <p class="text-xs font-bold uppercase tracking-widest">Central de Instruções</p>
+                    </div>
+                    <div class="p-4 max-h-[400px] overflow-y-auto custom-scroll">
+                        <div id="main-options">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Escolha uma opção:</p>
+                            <div class="option-item" onclick="showHelpDetail(1)">
+                                <span class="font-bold text-blue-600">1.</span> Mudar Usuário/Senha
+                            </div>
+                            <div class="option-item" onclick="showHelpDetail(2)">
+                                <span class="font-bold text-blue-600">2.</span> Filtrar por Período
+                            </div>
+                            <div class="option-item" onclick="showHelpDetail(3)">
+                                <span class="font-bold text-blue-600">3.</span> Realizar uma Tratativa
+                            </div>
+                            <div class="option-item" onclick="showHelpDetail(4)">
+                                <span class="font-bold text-blue-600">4.</span> Exportar PDF de Gráficos
+                            </div>
+                            <div class="mt-4 pt-2 border-t border-slate-100">
+                                <a href="https://wa.me/551151230349" target="_blank"
+                                    class="w-full bg-emerald-500 text-white p-3 rounded-xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-emerald-600 transition">
+                                    <i data-lucide="message-circle" class="w-4 h-4"></i> SUPORTE WHATSAPP
+                                </a>
+                            </div>
+                        </div>
+                        <div id="detail-view" class="hidden">
+                            <button onclick="backToSupportMain()"
+                                class="text-[10px] font-bold text-blue-600 uppercase mb-4 flex items-center gap-1">
+                                <i data-lucide="arrow-left" class="w-3 h-3"></i> Voltar
+                            </button>
+                            <div id="detail-text" class="text-xs text-slate-600 space-y-3 leading-relaxed"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
@@ -257,7 +329,6 @@
     </main>
 
     <div id="overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 hidden" onclick="fechar()"></div>
-
     <div id="modal"
         class="fixed top-0 right-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 border-l border-slate-200 flex flex-col">
         <div class="bg-slate-800 p-6 text-white flex justify-between items-center shrink-0">
@@ -292,7 +363,6 @@
             <form action="/atualizar_denuncia" method="POST" id="formTratativa" class="space-y-6">
                 <input type="hidden" name="protocolo" id="input_prot">
                 <input type="hidden" name="email_denunciante" id="input_email">
-
                 <label class="block text-[11px] font-bold text-slate-500 uppercase">Status do Processo</label>
                 <select name="status" id="select_status"
                     class="w-full p-4 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700">
@@ -300,7 +370,6 @@
                     <option value="Investigação">Investigação</option>
                     <option value="Finalizada">Finalizada</option>
                 </select>
-
                 <label class="block text-[11px] font-bold text-slate-500 uppercase">Parecer Técnico</label>
                 <textarea name="parecer" id="txt_parecer" required
                     class="w-full p-5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm h-60 bg-slate-50/30"></textarea>
@@ -327,6 +396,45 @@
             filtrarBI();
         });
 
+        // FUNÇÕES DO SUPORTE (MENU SUPERIOR)
+        function toggleSupport() {
+            const menu = document.getElementById('support-menu');
+            menu.classList.toggle('active');
+        }
+
+        // Fecha o menu se clicar fora dele
+        window.addEventListener('click', function (e) {
+            const menu = document.getElementById('support-menu');
+            const btn = document.querySelector('[onclick="toggleSupport()"]');
+            if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.classList.remove('active');
+            }
+        });
+
+        function showHelpDetail(option) {
+            const main = document.getElementById('main-options');
+            const detail = document.getElementById('detail-view');
+            const text = document.getElementById('detail-text');
+
+            main.classList.add('hidden');
+            detail.classList.remove('hidden');
+
+            const tutorials = {
+                1: `<strong>1. Mudar Usuário/Senha:</strong><br><br>• Clique no ícone de engrenagem cinza (canto superior direito).<br>• No painel que abrir, preencha o novo nome e nova senha.<br>• Clique em 'Confirmar Alteração'.<br>• Você será desconectado para logar com o novo acesso.`,
+                2: `<strong>2. Filtrar por Período:</strong><br><br>• Use os campos 'Período De' e 'Período Até'.<br>• Ao selecionar as datas, os indicadores (KPIs), a tabela e os gráficos mudam automaticamente para mostrar apenas o que aconteceu nesse tempo.`,
+                3: `<strong>3. Realizar uma Tratativa:</strong><br><br>• Localize a denúncia na tabela.<br>• Clique no botão 'TRATAR'.<br>• Altere o status do processo conforme o andamento.<br>• Escreva o Parecer Técnico no campo de texto.<br>• Clique em 'Salvar' para registrar.`,
+                4: `<strong>4. Exportar PDF de Gráficos:</strong><br><br>• Primeiro, clique em 'EXIBIR DASHBOARD'.<br>• Com os gráficos na tela, clique no botão verde 'EXPORTAR GRÁFICOS (PDF)'.<br>• O sistema vai gerar um arquivo pronto para impressão.`
+            };
+
+            text.innerHTML = tutorials[option];
+        }
+
+        function backToSupportMain() {
+            document.getElementById('main-options').classList.remove('hidden');
+            document.getElementById('detail-view').classList.add('hidden');
+        }
+
+        // FUNÇÕES ORIGINAIS (DASHBOARD / FILTROS)
         function toggleView() {
             const dashboard = document.getElementById('dashboardArea');
             const table = document.getElementById('tableArea');
