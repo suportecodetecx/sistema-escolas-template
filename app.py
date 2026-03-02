@@ -1,52 +1,53 @@
-from flask import Flask, render_template, request, jsonify, make_response, session, redirect, url_for
-from flask import flash, redirect, url_for, request, session # Certifique-se de que 'flash' está importado
+from flask import Flask, render_template, request, jsonify, make_response, session, redirect, url_for, flash
 import json, os, hashlib, base64
 from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from cryptography.fernet import Fernet
-from pymongo import MongoClient  # Adicionado para conexão com banco
+from pymongo import MongoClient
 
-# Fuso horário de Brasília
+# --- CONFIGURAÇÃO INICIAL ---
 FUSO_BR = timezone(timedelta(hours=-3))
-
 app = Flask(__name__)
 app.secret_key = 'chave_seguranca_codetecx_2026'
 
-# --- CONFIGURAÇÃO MONGODB (SUBSTITUI JSON) ---
+# --- CONEXÃO MONGODB ATLAS ---
 MONGO_URI = "mongodb+srv://suporte_db_user:2kT3pEb8AcXFWNbk@cluster0.vw8vm8p.mongodb.net/?retryWrites=true&w=majority"
 client = MongoClient(MONGO_URI)
 db = client['sistema_elshadday']
 col_denuncias = db['denuncias']
 col_config = db['config_admin']
 
-# --- VARIÁVEIS GLOBAIS E CRIPTOGRAFIA ---
+# --- SEGURANÇA E CRIPTOGRAFIA ---
 CHAVE_MESTRA = b'U2ZLBCXpcy_pEcsjdgCSxoZbYrbneHPDsSA47mso0xw='
 cipher_suite = Fernet(CHAVE_MESTRA)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 
 
-# --- INICIALIZAÇÃO DE SEGURANÇA ---
+# --- INICIALIZAÇÃO DE ACESSOS (SINCRONIZAÇÃO) ---
 def inicializar_admin_config():
     acessos_mestre = [
         {"user": "admin", "pass": "2821", "nome": "Direção El Shadday", "unidade": "Ceic El Shadday"},
-        {"user": "admin2", "pass": "1234", "nome": "Gestão Egberto", "unidade": "Ceim Egberto"},
+        {"user": "admin2", "pass": "12345", "nome": "Gestão Egberto", "unidade": "Ceim Egberto"},
         {"user": "suporte_codetecx", "pass": "mestra@2026", "nome": "Suporte Técnico", "unidade": "Geral"}
     ]
 
     for credencial in acessos_mestre:
-        # Tenta encontrar o usuário
         usuario_existente = col_config.find_one({"user": credencial["user"]})
-        
         if not usuario_existente:
             col_config.insert_one(credencial)
             print(f"✅ USUÁRIO CRIADO: {credencial['user']}")
         else:
-            # OPCIONAL: Garante que a senha no banco seja a mesma do código
+            # Força a atualização para garantir que a senha no banco bata com a do código
             col_config.update_one(
                 {"user": credencial["user"]}, 
-                {"$set": {"pass": credencial["pass"], "unidade": credencial["unidade"]}}
+                {"$set": {
+                    "pass": credencial["pass"], 
+                    "unidade": credencial["unidade"],
+                    "nome": credencial["nome"]
+                }}
             )
-            print(f"🔄 USUÁRIO ATUALIZADO: {credencial['user']}")
+            print(f"🔄 USUÁRIO SINCRONIZADO: {credencial['user']}")
 
+# Roda a inicialização ao subir o app
 inicializar_admin_config()
 
 # --- TRAVA DE LICENCIAMENTO ---
@@ -71,15 +72,14 @@ HTML_BLOQUEIO = """
 </html>
 """
 
-
 def gerar_protocolo_sequencial():
     data_hoje = datetime.now(FUSO_BR).strftime('%Y%m%d')
     regex = f"^{data_hoje}"
     contador = col_denuncias.count_documents({"protocolo": {"$regex": regex}}) + 1
     return f"{data_hoje}-{str(contador).zfill(4)}"
+
 # ==========================================
-# ==========================================
-# [BLOCO 03]: ROTAS DO USUÁRIO
+# [BLOCO 03]: ROTAS PÚBLICAS (USUÁRIO)
 # ==========================================
 @app.route('/')
 def home():
@@ -87,16 +87,13 @@ def home():
     ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
     return render_template('denuncia.html', ultimo=ultimo_visto)
 
-# --- ADICIONE ESTAS LINHAS AQUI ---
 @app.route('/politica-privacidade')
 def politica():
     return render_template('politica-privacidade.html')
-# ----------------------------------
 
 @app.route('/consultar/<prot>')
 def consultar(prot):
     if not verificar_licenca(): return "Indisponível", 403
-    # Busca no MongoDB
     d = col_denuncias.find_one({"protocolo": prot})
     if d:
         resp = make_response(jsonify({"status": d['status']}))
@@ -111,7 +108,6 @@ def enviar():
         agora = datetime.now(FUSO_BR)
         protocolo = gerar_protocolo_sequencial()
         
-        # Tratamento de anexo
         arquivo = request.files.get('arquivo')
         conteudo_anexo_final = "Nenhum"
         if arquivo and arquivo.filename != '':
@@ -120,8 +116,6 @@ def enviar():
                 imagem_base64 = base64.b64encode(arquivo.read()).decode('utf-8')
                 conteudo_anexo_final = f"data:image/{extensao};base64,{imagem_base64}"
 
-        # Captura o e-mail em texto simples
-        # Se o usuário não preencher, salvamos como "ANÔNIMO"
         email_bruto = request.form.get('email_opcional', '').strip()
         email_final = email_bruto if email_bruto else "ANÔNIMO"
 
@@ -133,14 +127,12 @@ def enviar():
             "assunto": request.form.get('titulo'),
             "relato": request.form.get('relato'),
             "anexo": conteudo_anexo_final,
-            "email_contato": email_final, # TEXTO SIMPLES PARA O DOSSIÊ
+            "email_contato": email_final,
             "status": "Recebido / Em Triagem",
             "parecer_comite": ""           
         }
         
-        # Insere no MongoDB
         col_denuncias.insert_one(nova_denuncia)
-
         resp = make_response(jsonify({"status": "sucesso", "protocolo": protocolo}))
         resp.set_cookie('ultimo_protocolo', protocolo, max_age=60*60*24*30)
         return resp
@@ -149,7 +141,6 @@ def enviar():
 # ==========================================
 # [BLOCO 05]: GESTÃO E DASHBOARD
 # ==========================================
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if session.get('admin_logado'): 
@@ -159,13 +150,13 @@ def login():
         usuario_digitado = request.form.get('user')
         senha_digitada = request.form.get('pass')
 
-        # BUSCA NO BANCO: Ajustado para os campos que aparecem no seu print do Atlas
-        # Se no Atlas estiver 'usuario', use 'usuario'. Se for 'usu...', complete o nome.
-        user_no_banco = col_config.find_one({"usuario": usuario_digitado})
+        # Busca no banco garantindo a correspondência de campos
+        user_no_banco = col_config.find_one({"user": usuario_digitado})
 
-        if user_no_banco and user_no_banco.get('senha') == senha_digitada:
+        # Comparação segura de senha (forçando string para evitar erro de tipo)
+        if user_no_banco and str(user_no_banco.get('pass')) == str(senha_digitada):
             session['admin_logado'] = True
-            session['admin_user'] = user_no_banco.get('usuario')
+            session['admin_user'] = user_no_banco.get('user')
             session['admin_nome'] = user_no_banco.get('nome', 'Administrador')
             session['admin_unidade'] = user_no_banco.get('unidade', 'Geral')
             return redirect(url_for('dashboard'))
@@ -185,7 +176,6 @@ def dashboard():
         return redirect(url_for('login'))
     
     denuncias = list(col_denuncias.find({}, {'_id': 0}).sort("data", -1))
-    
     return render_template('dashboard.html', 
                            denuncias=denuncias, 
                            unidade_atual=session.get('admin_unidade'),
@@ -193,11 +183,9 @@ def dashboard():
 
 @app.route('/atualizar_denuncia', methods=['POST'])
 def atualizar():
-    if not session.get('admin_logado'): 
-        return redirect(url_for('login'))
+    if not session.get('admin_logado'): return redirect(url_for('login'))
         
     prot = request.form.get('protocolo')
-    
     col_denuncias.update_one(
         {"protocolo": prot},
         {"$set": {
@@ -209,18 +197,16 @@ def atualizar():
 
 @app.route('/alterar_acesso', methods=['POST'])
 def alterar_senha():
-    if not session.get('admin_logado'): 
-        return redirect(url_for('login'))
+    if not session.get('admin_logado'): return redirect(url_for('login'))
     
     usuario_atual = session.get('admin_user')
     novo_user = request.form.get('novo_user')
     nova_senha = request.form.get('nova_senha')
     
     if nova_senha and novo_user:
-        # Atualiza usando as chaves corretas do banco
         col_config.update_one(
-            {"usuario": usuario_atual}, 
-            {"$set": {"usuario": novo_user, "senha": str(nova_senha)}}
+            {"user": usuario_atual}, 
+            {"$set": {"user": novo_user, "pass": str(nova_senha)}}
         )
         session['admin_user'] = novo_user
         flash('Acesso atualizado com sucesso!', 'success')
@@ -237,7 +223,6 @@ def area_segura(prot):
     d = col_denuncias.find_one({"protocolo": prot}, {'_id': 0})
     if not d: return "Não encontrado", 404
 
-    # Ajuste do Email no Dossiê
     email_banco = d.get('email_contato', 'ANÔNIMO')
     id_seguro = email_banco if email_banco != "ANÔNIMO" else "SIGILOSO"
     
@@ -319,5 +304,5 @@ def area_segura(prot):
     return make_response(conteudo_html)
 
 if __name__ == '__main__':
-    # O use_reloader=False evita o erro de soquete no Windows
+    # use_reloader=False é vital para evitar erros em alguns servidores locais
     app.run(debug=True, use_reloader=False)
