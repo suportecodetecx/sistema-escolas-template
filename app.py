@@ -26,12 +26,26 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 
 # --- INICIALIZAÇÃO DE SEGURANÇA ---
 def inicializar_admin_config():
-    # Agora verifica no banco de dados em vez do arquivo
-    if col_config.count_documents({"user": "admin"}) == 0:
-        config_inicial = {"user": "admin", "pass": "2821"}
-        try:
-            col_config.insert_one(config_inicial)
-        except: pass
+    acessos_mestre = [
+        {"user": "admin", "pass": "2821", "nome": "Direção El Shadday", "unidade": "Ceic El Shadday"},
+        {"user": "admin2", "pass": "1234", "nome": "Gestão Egberto", "unidade": "Ceim Egberto"},
+        {"user": "suporte_codetecx", "pass": "mestra@2026", "nome": "Suporte Técnico", "unidade": "Geral"}
+    ]
+
+    for credencial in acessos_mestre:
+        # Tenta encontrar o usuário
+        usuario_existente = col_config.find_one({"user": credencial["user"]})
+        
+        if not usuario_existente:
+            col_config.insert_one(credencial)
+            print(f"✅ USUÁRIO CRIADO: {credencial['user']}")
+        else:
+            # OPCIONAL: Garante que a senha no banco seja a mesma do código
+            col_config.update_one(
+                {"user": credencial["user"]}, 
+                {"$set": {"pass": credencial["pass"], "unidade": credencial["unidade"]}}
+            )
+            print(f"🔄 USUÁRIO ATUALIZADO: {credencial['user']}")
 
 inicializar_admin_config()
 
@@ -135,40 +149,60 @@ def enviar():
 # ==========================================
 # [BLOCO 05]: GESTÃO E DASHBOARD
 # ==========================================
-def carregar_credenciais():
-    cred = col_config.find_one({"user": "admin"})
-    if cred:
-        return {"user": cred['user'], "pass": cred['pass']}
-    return {"user": "admin", "pass": "2821"}
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if session.get('admin_logado'): return redirect(url_for('dashboard'))
+    # Se já houver sessão ativa, pula para o dashboard
+    if session.get('admin_logado'): 
+        return redirect(url_for('dashboard'))
+    
     if request.method == 'POST':
-        cred = carregar_credenciais()
-        if request.form.get('user') == cred['user'] and request.form.get('pass') == cred['pass']:
+        usuario_digitado = request.form.get('user')
+        senha_digitada = request.form.get('pass')
+
+        # BUSCA NO BANCO: Usando 'user' e 'pass' para bater com sua def inicializar_admin_config
+        user_no_banco = col_config.find_one({"user": usuario_digitado})
+
+        # Validação: verifica se o usuário existe e se a senha no banco é igual à digitada
+        if user_no_banco and str(user_no_banco.get('pass')) == str(senha_digitada):
             session['admin_logado'] = True
+            session['admin_user'] = user_no_banco.get('user')
+            session['admin_nome'] = user_no_banco.get('nome', 'Administrador')
+            session['admin_unidade'] = user_no_banco.get('unidade', 'Geral')
             return redirect(url_for('dashboard'))
+        
+        # Se falhar, retorna erro para o HTML
         return render_template('login.html', erro="Incorreto")
+        
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
-    session.pop('admin_logado', None)
+    # session.clear limpa tudo (segurança total ao sair)
+    session.clear()
     return redirect(url_for('login'))
 
 @app.route('/dashboard')
 def dashboard():
-    if not session.get('admin_logado'): return redirect(url_for('login'))
-    # Busca todas as denúncias no banco, invertendo a ordem (mais recentes primeiro)
+    if not session.get('admin_logado'): 
+        return redirect(url_for('login'))
+    
+    # Busca todas as denúncias e ordena pelas mais recentes
     denuncias = list(col_denuncias.find({}, {'_id': 0}).sort("data", -1))
-    return render_template('dashboard.html', denuncias=denuncias)
+    
+    return render_template('dashboard.html', 
+                           denuncias=denuncias, 
+                           unidade_atual=session.get('admin_unidade'),
+                           nome_admin=session.get('admin_nome'))
 
 @app.route('/atualizar_denuncia', methods=['POST'])
 def atualizar():
-    if not session.get('admin_logado'): return redirect(url_for('login'))
+    if not session.get('admin_logado'): 
+        return redirect(url_for('login'))
+        
     prot = request.form.get('protocolo')
     
+    # Atualiza status e parecer no MongoDB
     col_denuncias.update_one(
         {"protocolo": prot},
         {"$set": {
@@ -180,16 +214,23 @@ def atualizar():
 
 @app.route('/alterar_acesso', methods=['POST'])
 def alterar_senha():
-    if not session.get('admin_logado'): return redirect(url_for('login'))
+    if not session.get('admin_logado'): 
+        return redirect(url_for('login'))
     
-    user = request.form.get('novo_user') # Pegando o usuário também
-    nova = request.form.get('nova_senha')
+    usuario_atual = session.get('admin_user') # Quem está logado
+    novo_user = request.form.get('novo_user')
+    nova_senha = request.form.get('nova_senha')
     
-    if nova:
-        # Atualiza usuário e senha
-        col_config.update_one({"user": "admin"}, {"$set": {"user": user, "pass": str(nova)}})
-        flash('Acesso atualizado com sucesso!', 'success') # <--- Categoria 'success'
-        return "OK", 200 # Retorna OK para o JavaScript saber que deu certo
+    if nova_senha and novo_user:
+        # Atualiza o registro específico de quem está logado
+        col_config.update_one(
+            {"user": usuario_atual}, 
+            {"$set": {"user": novo_user, "pass": str(nova_senha)}}
+        )
+        # Atualiza a sessão para o novo nome de usuário não dar erro no próximo clique
+        session['admin_user'] = novo_user
+        flash('Acesso atualizado com sucesso!', 'success')
+        return "OK", 200
     return "Erro", 400
 
 # ==========================================
