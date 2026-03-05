@@ -256,15 +256,27 @@
     </div>
 
     <div id="cookie-banner" class="fixed bottom-6 left-6 right-6 md:left-auto md:max-w-sm z-[100] hidden">
-        <div class="glass-card p-6 rounded-[2rem] shadow-2xl border border-slate-200">
+        <div class="bg-white/95 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl border border-slate-200/60 transition-all duration-500">
             <div class="flex items-start gap-4">
-                <div class="bg-orange-100 p-3 rounded-2xl text-brand-detalhe">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                <div class="p-3 rounded-2xl" style="background-color: {{ empresa_site.cor_primaria }}15; color: {{ empresa_site.cor_primaria }};">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
                 </div>
-                <div class="space-y-2">
-                    <h4 class="font-black text-brand-primary uppercase italic text-sm tracking-tighter">Privacidade</h4>
-                    <p class="text-[10px] text-slate-500 font-bold leading-tight">Este site utiliza cookies apenas para salvar seu protocolo localmente.</p>
-                    <button onclick="aceitarCookies()" class="w-full btn-orange text-white font-black py-3 rounded-xl text-[10px] uppercase">Compreendo</button>
+                
+                <div class="space-y-3">
+                    <h4 class="font-black uppercase italic text-xs tracking-tighter" style="color: {{ empresa_site.cor_primaria }}">Privacidade & Segurança</h4>
+                    <p class="text-[10px] text-slate-600 font-bold leading-tight">
+                        Este portal utiliza cookies essenciais para garantir o sigilo do seu relato e permitir a consulta do seu protocolo conforme a <span class="text-slate-900">LGPD</span>.
+                    </p>
+                    <div class="flex flex-col gap-2">
+                        <button onclick="aceitarCookies()" 
+                                class="w-full text-white font-black py-3 rounded-xl text-[10px] uppercase transition-all active:scale-95 shadow-lg hover:brightness-110"
+                                style="background-color: {{ empresa_site.cor_primaria }}">
+                            Compreendo e Aceito
+                        </button>
+                        <a href="/politica-privacidade" target="_blank" class="text-[9px] text-center text-slate-400 font-bold uppercase hover:underline">Ver Termos de Uso</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -339,20 +351,44 @@
         }
     }
 
-    // ==========================================
-    // 3. LÓGICA DE COOKIES E BANNER
-    // ==========================================
-    function checkCookies() {
-        const banner = document.getElementById('cookie-banner');
-        if (!localStorage.getItem('cookiesAceitos')) {
-            banner?.classList.remove('hidden');
+    // ==============================================================
+// GESTÃO DE PRIVACIDADE E COOKIES (PADRÃO CORPORATIVO)
+// ==============================================================
+function checkCookies() {
+    const banner = document.getElementById('cookie-banner');
+    
+    // Verifica se o usuário já aceitou os termos anteriormente
+    if (!localStorage.getItem('cookiesAceitos')) {
+        if (banner) {
+            banner.classList.remove('hidden');
+            // Adicionamos um pequeno delay e a classe de animação que você já tem no CSS
+            setTimeout(() => {
+                banner.classList.add('animate-modal');
+            }, 100);
         }
     }
+}
 
-    function aceitarCookies() {
-        localStorage.setItem('cookiesAceitos', 'true');
-        document.getElementById('cookie-banner')?.classList.add('hidden');
+function aceitarCookies() {
+    // Salva a preferência no navegador do usuário
+    localStorage.setItem('cookiesAceitos', 'true');
+    
+    const banner = document.getElementById('cookie-banner');
+    if (banner) {
+        // Suaviza a saída antes de esconder
+        banner.style.opacity = '0';
+        banner.style.transform = 'translateY(20px)';
+        banner.style.transition = 'all 0.5s ease';
+        
+        setTimeout(() => {
+            banner.classList.add('hidden');
+        }, 500);
     }
+}
+
+// Inicializa a verificação assim que o documento carregar
+document.addEventListener('DOMContentLoaded', checkCookies);
+// ==============================================================
 
     // ==========================================
     // 4. NAVEGAÇÃO ENTRE ETAPAS (STEPS)
