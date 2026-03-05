@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <title>Acesso Restrito | EL SHADDAY</title>
+    <title>Acesso Restrito | {{ empresa_site.nome }}</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 
@@ -35,7 +35,7 @@
                 <i data-lucide="shield-check" class="w-10 h-10"></i>
             </div>
             <h2 class="text-3xl font-black text-slate-800 tracking-tighter uppercase italic">
-                EL SHADDAY <span class="text-blue-600">Integridade</span>
+                {{ empresa_site.nome }} <span class="text-blue-600">Integridade</span>
             </h2>
             <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em] mt-1">Painel Administrativo v2.0
             </p>
@@ -56,6 +56,8 @@
             {% endif %}
 
             <form action="/login" method="POST" class="space-y-5">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                 <div>
                     <label
                         class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Usuário
@@ -123,7 +125,6 @@
     </div>
 
     <script>
-        // Inicializa os ícones do Lucide
         lucide.createIcons();
     </script>
 </body>

@@ -1,55 +1,189 @@
-from flask import Flask, render_template, request, jsonify, make_response, session, redirect, url_for
-from flask import flash, redirect, url_for, request, session # Certifique-se de que 'flash' está importado
+from flask import Flask, render_template, request, jsonify, make_response, session, redirect, url_for, flash
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 import json, os, hashlib, base64
 from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from cryptography.fernet import Fernet
-from pymongo import MongoClient  # Adicionado para conexão com banco
+from pymongo import MongoClient 
+from datetime import timedelta
 
-# Fuso horário de Brasília
+# ============================================================
+# === [1] CONFIGURAÇÕES GERAIS DO SERVIDOR                 ===
+# ============================================================
 FUSO_BR = timezone(timedelta(hours=-3))
 
 app = Flask(__name__)
 app.secret_key = 'chave_seguranca_codetecx_2026'
 
-# --- CONFIGURAÇÃO MONGODB (SUBSTITUI JSON) ---
+# --- AJUSTE: SESSÃO PERMANENTE (30 DIAS) ---
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+
+@app.before_request
+def fazer_sessao_permanente():
+    session.permanent = True
+
+# ATIVAÇÃO DA PROTEÇÃO CSRF
+csrf = CSRFProtect(app)
+
+# ============================================================
+# === [2] CONEXÃO COM O BANCO DE DADOS (MONGODB)           ===
+# ============================================================
 MONGO_URI = "mongodb+srv://suporte_db_user:2kT3pEb8AcXFWNbk@cluster0.vw8vm8p.mongodb.net/?retryWrites=true&w=majority"
-client = MongoClient(MONGO_URI)
-db = client['sistema_elshadday']
-col_denuncias = db['denuncias']
+client = MongoClient(MONGO_URI, connectTimeoutMS=30000, serverSelectionTimeoutMS=30000)
+
+# Nome do Banco de Dados principal
+db = client['sistema_empresa'] 
 col_config = db['config_admin']
 
-# --- VARIÁVEIS GLOBAIS E CRIPTOGRAFIA ---
+# ============================================================
+# === [3] IDENTIDADE VISUAL (CORES DO WHITE LABEL)         ===
+# === PARA ADICIONAR NOVA EMPRESA: ADICIONE UM BLOCO AQUI  ===
+# ============================================================
+CORES_SISTEMA = {
+    "sol-magico": {
+        "primaria": "#106ab9",
+        "secundaria": "#fb923c",
+        "tema": "light"
+    },
+    "lua-nova": {
+        "primaria": "#4f46e5",
+        "secundaria": "#fb923c",
+        "tema": "light"
+    },
+    "Uniao": {
+        "primaria": "#475e93",
+        "secundaria": "#fb923c",
+        "tema": "light"
+    },
+    "Do-re-mi": {
+        "primaria": "#2a27db",
+        "secundaria": "#fb923c",
+        "tema": "light"
+    }
+}
+
+# ============================================================
+# === [4] CONFIGURAÇÃO DE UNIDADES E NOMES                 ===
+# === PARA ADICIONAR NOVA EMPRESA: ADICIONE UM BLOCO AQUI  ===
+# ============================================================
+CONFIG_EMPRESAS = {
+    "sol-magico": {
+        "nome": "Sol Mágico",
+        "unidades": ["Sol Mágico I", "Sol Mágico II"],
+        "slug": "sol-magico"
+    },
+    "lua-nova": {
+        "nome": "Lua Nova",
+        "unidades": ["Lua Nova I", "Lua Nova II"],
+        "slug": "lua-nova"
+    },
+    "Uniao": {
+        "nome": "União",
+        "unidades": ["União I", "União II"],
+        "slug": "Uniao"
+    },
+    "Do-re-mi": {
+        "nome": "Do Re Mi",
+        "unidades": ["Do Re Mi I", "Do Re Mi II"],
+        "slug": "Do-re-mi"
+    }
+}
+
+# Configuração de Domínios (Caso a empresa tenha domínio próprio)
+DOMINIOS_CLIENTES = {
+    'solmagico.com.br': 'sol-magico',
+    'luanova.com.br': 'lua-nova',
+    'uniaogestao.com.br': 'Uniao',
+    'doremi.com.br': 'Do-re-mi'
+}
+
 CHAVE_MESTRA = b'U2ZLBCXpcy_pEcsjdgCSxoZbYrbneHPDsSA47mso0xw='
 cipher_suite = Fernet(CHAVE_MESTRA)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 
 
-# --- INICIALIZAÇÃO DE SEGURANÇA ---
+
+# ============================================================
+# === [5] MOTOR DE CUSTOMIZAÇÃO (CONTEXT PROCESSOR)        ===
+# ============================================================
+@app.context_processor
+def inject_empresa_context():
+    slug = request.view_args.get('empresa_slug') if request.view_args else None
+    
+    if not slug:
+        ref = request.referrer or ""
+        for s in CONFIG_EMPRESAS.keys():
+            if f"/{s}" in ref:
+                slug = s
+                break
+
+    if not slug:
+        host = request.host
+        slug = DOMINIOS_CLIENTES.get(host)
+
+    if not slug or slug not in CONFIG_EMPRESAS:
+        slug = 'sol-magico'
+
+    dados_padrao = CONFIG_EMPRESAS.get('sol-magico')
+    cores_padrao = CORES_SISTEMA.get('sol-magico')
+
+    dados = CONFIG_EMPRESAS.get(slug, dados_padrao).copy()
+    cores = CORES_SISTEMA.get(slug, cores_padrao)
+    
+    dados['cor_primaria'] = cores.get('primaria', '#059669')
+    dados['cor_secundaria'] = cores.get('secundaria', '#fbbf24')
+    dados['tema'] = cores.get('tema', 'light')
+    
+    status_login = session.get('admin_logado', False)
+    
+    return dict(
+        empresa_site=dados, 
+        slug_site=slug, 
+        estilo_site=cores, 
+        admin_logado=status_login
+    )
+
+
+# ============================================================
+# === [6] GESTÃO DE USUÁRIOS E ACESSOS                     ===
+# === ADICIONE OU MUDE SENHAS DE ADMINISTRADORES AQUI      ===
+# ============================================================
 def inicializar_admin_config():
     acessos_mestre = [
-        {"user": "admin", "pass": "2821", "nome": "Direção El Shadday", "unidade": "Ceic El Shadday"},
-        {"user": "admin2", "pass": "1234", "nome": "Gestão Egberto", "unidade": "Ceim Egberto"},
-        {"user": "suporte_codetecx", "pass": "mestra@2026", "nome": "Suporte Técnico", "unidade": "Geral"}
-    ]
-
-    for credencial in acessos_mestre:
-        # Tenta encontrar o usuário
-        usuario_existente = col_config.find_one({"user": credencial["user"]})
+        # MASTER (Codetecx)
+        {
+            "user": "suporte_codetecx", 
+            "pass": "Code@", 
+            "nome": "Suporte Técnico", 
+            "unidade": "Geral", 
+            "empresa_exibicao": "Codetecx"
+        },
         
-        if not usuario_existente:
-            col_config.insert_one(credencial)
-            print(f"✅ USUÁRIO CRIADO: {credencial['user']}")
-        else:
-            # OPCIONAL: Garante que a senha no banco seja a mesma do código
-            col_config.update_one(
-                {"user": credencial["user"]}, 
-                {"$set": {"pass": credencial["pass"], "unidade": credencial["unidade"]}}
-            )
-            print(f"🔄 USUÁRIO ATUALIZADO: {credencial['user']}")
+        # EMPRESA: UNIÃO
+        {"user": "admin", "pass": "2821", "nome": "Direção União", "unidade": "Uniao", "empresa_exibicao": "União"},
+        {"user": "uniao2", "pass": "1234", "nome": "Auxiliar União", "unidade": "Uniao", "empresa_exibicao": "União"},
+
+        # EMPRESA: DO-RE-MI
+        {"user": "admin2", "pass": "1234", "nome": "Gestão Do Re Mi", "unidade": "Do-re-mi", "empresa_exibicao": "Do Re Mi"},
+
+        # EMPRESA: SOL MÁGICO
+        {"user": "AdminSol", "pass": "1234", "nome": "Direção Sol Mágico", "unidade": "sol-magico", "empresa_exibicao": "Sol Mágico"},
+
+        # EMPRESA: LUA NOVA
+        {"user": "AdminLua", "pass": "1234", "nome": "Direção Lua Nova", "unidade": "lua-nova", "empresa_exibicao": "Lua Nova"}
+    ]
+    
+    for credencial in acessos_mestre:
+        col_config.update_one(
+            {"user": credencial["user"]}, 
+            {"$set": credencial},
+            upsert=True
+        )
 
 inicializar_admin_config()
 
-# --- TRAVA DE LICENCIAMENTO ---
+# ============================================================
+# === [7] SEGURANÇA E LICENCIAMENTO                        ===
+# ============================================================
 DATA_EXPIRACAO = "2026-12-24" 
 def verificar_licenca():
     try:
@@ -71,47 +205,64 @@ HTML_BLOQUEIO = """
 </html>
 """
 
-
-def gerar_protocolo_sequencial():
+def gerar_protocolo_dinamico(slug):
+    col_atual = db[f'denuncias_{slug}']
     data_hoje = datetime.now(FUSO_BR).strftime('%Y%m%d')
     regex = f"^{data_hoje}"
-    contador = col_denuncias.count_documents({"protocolo": {"$regex": regex}}) + 1
+    contador = col_atual.count_documents({"protocolo": {"$regex": regex}}) + 1
     return f"{data_hoje}-{str(contador).zfill(4)}"
+
 # ==========================================
+# [ROTAS DO USUÁRIO (FRONT-END)]
 # ==========================================
-# [BLOCO 03]: ROTAS DO USUÁRIO
-# ==========================================
+
 @app.route('/')
 def home():
-    if not verificar_licenca(): return HTML_BLOQUEIO, 403
-    ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
-    return render_template('denuncia.html', ultimo=ultimo_visto)
+    return "Por favor, acesse pelo link enviado pela sua instituição (Ex: /sol-magico)", 404
 
-# --- ADICIONE ESTAS LINHAS AQUI ---
+@app.route('/<empresa_slug>')
+def home_empresa(empresa_slug):
+    if not verificar_licenca(): return HTML_BLOQUEIO, 403
+    config = CONFIG_EMPRESAS.get(empresa_slug)
+    if not config:
+        return "Empresa não encontrada", 404
+        
+    cores_atuais = CORES_SISTEMA.get(empresa_slug, CORES_SISTEMA['Uniao'])
+    ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
+    
+    return render_template('denuncia.html', 
+                            ultimo=ultimo_visto, 
+                            nome_sistema=f"Portal {config['nome']}", 
+                            unidades=config['unidades'],
+                            slug_atual=empresa_slug,
+                            cores=cores_atuais)
+
 @app.route('/politica-privacidade')
 def politica():
     return render_template('politica-privacidade.html')
-# ----------------------------------
 
 @app.route('/consultar/<prot>')
 def consultar(prot):
     if not verificar_licenca(): return "Indisponível", 403
-    # Busca no MongoDB
-    d = col_denuncias.find_one({"protocolo": prot})
-    if d:
-        resp = make_response(jsonify({"status": d['status']}))
-        resp.set_cookie('ultimo_protocolo', prot, max_age=60*60*24*7) 
-        return resp
+    for nome_col in db.list_collection_names():
+        if nome_col.startswith("denuncias_"):
+            d = db[nome_col].find_one({"protocolo": prot})
+            if d:
+                resp = make_response(jsonify({"status": d['status']}))
+                resp.set_cookie('ultimo_protocolo', prot, max_age=60*60*24*7) 
+                return resp
     return jsonify({"status": "Nao encontrado"}), 404
 
 @app.route('/enviar', methods=['POST'])
 def enviar():
     if not verificar_licenca(): return jsonify({"status": "erro"}), 403
     try:
-        agora = datetime.now(FUSO_BR)
-        protocolo = gerar_protocolo_sequencial()
+        slug = request.form.get('empresa_slug', 'geral')
+        col_atual = db[f'denuncias_{slug}']
         
-        # Tratamento de anexo
+        agora = datetime.now(FUSO_BR)
+        protocolo = gerar_protocolo_dinamico(slug)
+        
         arquivo = request.files.get('arquivo')
         conteudo_anexo_final = "Nenhum"
         if arquivo and arquivo.filename != '':
@@ -119,11 +270,6 @@ def enviar():
             if extensao in ['png', 'jpg', 'jpeg', 'webp']:
                 imagem_base64 = base64.b64encode(arquivo.read()).decode('utf-8')
                 conteudo_anexo_final = f"data:image/{extensao};base64,{imagem_base64}"
-
-        # Captura o e-mail em texto simples
-        # Se o usuário não preencher, salvamos como "ANÔNIMO"
-        email_bruto = request.form.get('email_opcional', '').strip()
-        email_final = email_bruto if email_bruto else "ANÔNIMO"
 
         nova_denuncia = {
             "protocolo": protocolo,
@@ -133,52 +279,51 @@ def enviar():
             "assunto": request.form.get('titulo'),
             "relato": request.form.get('relato'),
             "anexo": conteudo_anexo_final,
-            "email_contato": email_final, # TEXTO SIMPLES PARA O DOSSIÊ
+            "email_contato": request.form.get('email_opcional', 'ANÔNIMO'),
             "status": "Recebido / Em Triagem",
             "parecer_comite": ""           
         }
-        
-        # Insere no MongoDB
-        col_denuncias.insert_one(nova_denuncia)
-
+        col_atual.insert_one(nova_denuncia)
         resp = make_response(jsonify({"status": "sucesso", "protocolo": protocolo}))
         resp.set_cookie('ultimo_protocolo', protocolo, max_age=60*60*24*30)
         return resp
     except Exception as e: return jsonify({"status": "erro", "msg": str(e)}), 500
 
 # ==========================================
-# [BLOCO 05]: GESTÃO E DASHBOARD
+# [GESTÃO E DASHBOARD (BACK-END)]
 # ==========================================
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Se já houver sessão ativa, pula para o dashboard
     if session.get('admin_logado'): 
         return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
         usuario_digitado = request.form.get('user')
         senha_digitada = request.form.get('pass')
-
-        # BUSCA NO BANCO: Usando 'user' e 'pass' para bater com sua def inicializar_admin_config
+        
         user_no_banco = col_config.find_one({"user": usuario_digitado})
 
-        # Validação: verifica se o usuário existe e se a senha no banco é igual à digitada
         if user_no_banco and str(user_no_banco.get('pass')) == str(senha_digitada):
-            session['admin_logado'] = True
-            session['admin_user'] = user_no_banco.get('user')
-            session['admin_nome'] = user_no_banco.get('nome', 'Administrador')
-            session['admin_unidade'] = user_no_banco.get('unidade', 'Geral')
+            session.clear()
+            
+            empresa_nome = user_no_banco.get('empresa_exibicao', 'Sistema')
+            
+            session.update({
+                'admin_logado': True,
+                'admin_user': user_no_banco.get('user'),
+                'admin_nome': user_no_banco.get('nome', 'Administrador'),
+                'admin_unidade': user_no_banco.get('unidade', 'Geral'),
+                'admin_empresa_nome': empresa_nome 
+            })
             return redirect(url_for('dashboard'))
-        
-        # Se falhar, retorna erro para o HTML
+            
         return render_template('login.html', erro="Incorreto")
-        
+    
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
-    # session.clear limpa tudo (segurança total ao sair)
     session.clear()
     return redirect(url_for('login'))
 
@@ -186,14 +331,33 @@ def logout():
 def dashboard():
     if not session.get('admin_logado'): 
         return redirect(url_for('login'))
+        
+    unidade_admin = session.get('admin_unidade')
+    denuncias = []
     
-    # Busca todas as denúncias e ordena pelas mais recentes
-    denuncias = list(col_denuncias.find({}, {'_id': 0}).sort("data", -1))
-    
+    if unidade_admin == "Geral":
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("denuncias_"):
+                itens = list(db[nome_col].find({}, {'_id': 0}))
+                for item in itens:
+                    item['colecao_origem'] = nome_col
+                denuncias.extend(itens)
+        denuncias.sort(key=lambda x: x.get('data', ''), reverse=True)
+    else:
+        nome_colecao = f'denuncias_{unidade_admin}'
+        denuncias = list(db[nome_colecao].find({}, {'_id': 0}).sort("data", -1))
+        for d in denuncias:
+            d['colecao_origem'] = nome_colecao
+
+    for d in denuncias:
+        if not d.get('status'):
+            d['status'] = "Recebido / Em Triagem"
+
     return render_template('dashboard.html', 
-                           denuncias=denuncias, 
-                           unidade_atual=session.get('admin_unidade'),
-                           nome_admin=session.get('admin_nome'))
+                            denuncias=denuncias, 
+                            unidade_atual=unidade_admin,
+                            nome_admin=session.get('admin_nome'),
+                            empresa_nome=session.get('admin_empresa_nome'))
 
 @app.route('/atualizar_denuncia', methods=['POST'])
 def atualizar():
@@ -201,13 +365,20 @@ def atualizar():
         return redirect(url_for('login'))
         
     prot = request.form.get('protocolo')
-    
-    # Atualiza status e parecer no MongoDB
-    col_denuncias.update_one(
+    novo_status = request.form.get('status')
+    novo_parecer = request.form.get('parecer')
+    colecao_alvo = request.form.get('colecao_origem') 
+
+    if not colecao_alvo:
+        unidade_admin = session.get('admin_unidade')
+        colecao_alvo = f'denuncias_{unidade_admin}'
+
+    db[colecao_alvo].update_one(
         {"protocolo": prot},
         {"$set": {
-            "status": request.form.get('status'),
-            "parecer_comite": request.form.get('parecer')
+            "status": novo_status, 
+            "parecer_comite": novo_parecer,
+            "data_atualizacao": datetime.now().strftime('%d/%m/%Y %H:%M')
         }}
     )
     return redirect(url_for('dashboard'))
@@ -216,38 +387,51 @@ def atualizar():
 def alterar_senha():
     if not session.get('admin_logado'): 
         return redirect(url_for('login'))
-    
-    usuario_atual = session.get('admin_user') # Quem está logado
+        
+    usuario_atual = session.get('admin_user')
     novo_user = request.form.get('novo_user')
     nova_senha = request.form.get('nova_senha')
     
     if nova_senha and novo_user:
-        # Atualiza o registro específico de quem está logado
         col_config.update_one(
             {"user": usuario_atual}, 
             {"$set": {"user": novo_user, "pass": str(nova_senha)}}
         )
-        # Atualiza a sessão para o novo nome de usuário não dar erro no próximo clique
         session['admin_user'] = novo_user
-        flash('Acesso atualizado com sucesso!', 'success')
         return "OK", 200
+        
     return "Erro", 400
 
-# ==========================================
-# [BLOCO 06]: DOSSIÊ DE IMPRESSÃO
-# ==========================================
+# ============================================================
+# === [SISTEMA DE DOSSIÊ - IMPRESSÃO SEGURA]               ===
+# ============================================================
 @app.route('/gestao/<prot>')
 def area_segura(prot):
     if not session.get('admin_logado'): return redirect(url_for('login'))
+    unidade_admin = session.get('admin_unidade')
     
-    d = col_denuncias.find_one({"protocolo": prot}, {'_id': 0})
+    d = None
+    if unidade_admin == "Geral":
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("denuncias_"):
+                d = db[nome_col].find_one({"protocolo": prot}, {'_id': 0})
+                if d: break
+    else:
+        d = db[f'denuncias_{unidade_admin}'].find_one({"protocolo": prot}, {'_id': 0})
+
     if not d: return "Não encontrado", 404
 
-    # Ajuste do Email no Dossiê
-    email_banco = d.get('email_contato', 'ANÔNIMO')
-    id_seguro = email_banco if email_banco != "ANÔNIMO" else "SIGILOSO"
+    # --- LÓGICA DE SIGILO ---
+    email_banco = d.get('email_contato', '').strip()
+    if not email_banco or email_banco.upper() in ["ANÔNIMO", "ANONIMO", "NENHUM"]:
+        id_seguro = "SIGILOSO / ANÔNIMO"
+    else:
+        id_seguro = email_banco
+
+    # --- TOKEN DINÂMICO POR IMPRESSÃO ---
+    agora_agora = datetime.now().strftime('%d%m%Y%H%M%S%f')
+    token_auth = hashlib.md5(f"{prot}{agora_agora}".encode()).hexdigest().upper()[:20]
     
-    token_auth = hashlib.md5(f"{prot}{d['data']}".encode()).hexdigest().upper()[:20]
     midia_html = f"""<div class="container-midia"><div class="secao-titulo">Anexo Enviado</div><div class="caixa-imagem"><img src="{d['anexo']}" class="img-anexo"></div></div>""" if d.get('anexo') and d['anexo'] != "Nenhum" else ""
 
     conteudo_html = f"""
@@ -282,14 +466,14 @@ def area_segura(prot):
             <div class="header">
                 <div class="confidencial">ESTRITAMENTE CONFIDENCIAL - LEI 14.457/22</div>
                 <h1>Dossiê de Investigação Interna</h1>
-                <small>Integridade El Shadday / Codetecx</small>
+                <small>Canal de Ética / Codetecx</small>
             </div>
             <table>
                 <tr><th>PROTOCOLO:</th><td><b>{prot}</b></td></tr>
                 <tr><th>DATA REGISTRO:</th><td>{d['data']}</td></tr>
                 <tr><th>UNIDADE:</th><td>{d['unidade']}</td></tr>
                 <tr><th>CATEGORIA:</th><td>{d['categoria']}</td></tr>
-                <tr><th>ID DENUNCIANTE:</th><td><code>{id_seguro}</code></td></tr>
+                <tr><th>ID DENUNCIANTE:</th><td><code style="font-weight: bold;">{id_seguro}</code></td></tr>
                 <tr><th>STATUS ATUAL:</th><td>{d.get('status', 'EM ANÁLISE')}</td></tr>
             </table>
             <div class="secao-titulo">1. Relato dos Fatos</div>
@@ -297,9 +481,10 @@ def area_segura(prot):
             {midia_html}
             <div class="secao-titulo">2. Parecer e Conclusão do Comitê</div>
             <div class="caixa-texto">{d.get('parecer_comite', 'Aguardando registro do parecer oficial...')}</div>
-            <div class="assinaturas">
+            
+            <div class="assinaturas" style="margin-top: 20px;">
                 <table style="border: none; width: 100%;">
-                   <tr style="border: none;">
+                    <tr style="border: none;">
                         <td style="border: none; text-align: center;">
                             <div class="linha-assinatura">Responsável Triagem</div>
                         </td>
@@ -307,16 +492,15 @@ def area_segura(prot):
                             <div class="linha-assinatura">Comitê de Ética</div>
                         </td>
                     </tr>
-                    <tr style="border: none;">
-                        <td colspan="2" style="border: none; text-align: center; padding-top: 30px;">
-                            <div class="linha-assinatura" style="margin: 0 auto; width: 250px;">Diretoria</div>
-                        </td>
-                    </tr>
                 </table>
+                <div style="display: flex; justify-content: center; margin-top: 10px;">
+                    <div class="linha-assinatura" style="width: 250px;">Diretoria Executiva / Presidência</div>
+                </div>
             </div>
+
             <div class="token-footer">
-                <span><b>TOKEN:</b> {token_auth}</span>
-                <span>Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</span>
+                <span><b>VALIDAÇÃO (TOKEN):</b> {token_auth}</span>
+                <span>Impressão em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</span>
             </div>
         </div>
     </body>
@@ -324,5 +508,8 @@ def area_segura(prot):
     """
     return make_response(conteudo_html)
 
+# ============================================================
+# === [EXECUTOR DO APP]                                    ===
+# ============================================================
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=8000, use_reloader=False)
