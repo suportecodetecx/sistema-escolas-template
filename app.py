@@ -334,6 +334,7 @@ def enviar():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    #
     if session.get('admin_logado'): 
         return redirect(url_for('dashboard'))
     
