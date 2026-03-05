@@ -61,23 +61,23 @@ col_config = db['config_admin']
 # ============================================================
 CORES_SISTEMA = {
     "sol-magico": {
-        "primaria": "#106ab9",    # VERDE ESMERALDA (Mudamos do Azul para Verde)
-        "secundaria": "#fb923c",  # Cinza bem claro para fundos
+        "primaria": "#106ab9",    
+        "secundaria": "#fb923c",  
         "tema": "light"
     },
     "lua-nova": {
-        "primaria": "#4f46e5",    # Roxo Indigo
-        "secundaria": "#fb923c",  # Laranja
+        "primaria": "#4f46e5",    
+        "secundaria": "#fb923c",  
         "tema": "light"
     },
     "Uniao": {
-        "primaria": "#475e93",    # Dark Slate (Profissional)
-        "secundaria": "#fb923c",  # Verde Sucesso
+        "primaria": "#475e93",    
+        "secundaria": "#fb923c",  
         "tema": "light"
     },
     "Do-re-mi": {
-        "primaria": "#2a27db",    # Rosa Vibrante (Para testar se muda mesmo!)
-        "secundaria": "#fb923c",  # Amarelo/Dourado
+        "primaria": "#6b69dc",    
+        "secundaria": "#fb923c",  
         "tema": "light"
     }
 }
