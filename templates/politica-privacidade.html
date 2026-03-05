@@ -128,10 +128,22 @@
                 Conforme a LGPD, você tem direito a confirmar a existência de tratamento, acessar seus dados e solicitar a correção de dados incompletos ou inexatos. Para relatos anônimos, a identificação do titular para exercício desses direitos pode exigir a validação do protocolo gerado no ato da denúncia.
             </p>
 
-            <div class="mt-12 pt-8 border-t border-slate-100 text-center">
-                <p class="text-xs text-slate-400">
-                    © 2026 Codetecx Soluções Tecnológicas - Operadora do Canal de Integridade para {{ empresa_site.nome if empresa_site else 'Clientes' }}.
-                </p>
+           <div class="mt-12 pt-8 border-t border-slate-100 text-center">
+                <div class="inline-flex items-center justify-center gap-2.5 leading-none">
+                    
+                    <a href="https://codetecx.com" target="_blank" class="inline-block align-middle transition-transform hover:scale-110 active:scale-95">
+                        <img src="{{ url_for('static', filename='img/logo-camaleao.png') }}" 
+                             alt="CodeTecx" 
+                             class="w-5 h-5 md:w-6 md:h-6 object-contain opacity-70 -mt-[2px]">
+                    </a>
+                    
+                    <span class="text-[10px] md:text-[11px] font-semibold text-slate-400 tracking-tight align-middle">
+                        © 2026 <span class="text-slate-600">CodeTecx Soluções</span> 
+                        <span class="opacity-30 mx-1">•</span> 
+                        Inteligência em Integridade para {{ empresa_site.nome if empresa_site else 'Clientes' }}
+                    </span>
+                    
+                </div>
             </div>
         </div>
     </div>

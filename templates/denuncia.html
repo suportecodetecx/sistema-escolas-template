@@ -228,6 +228,27 @@
         </div>
     </main>
 
+ <footer class="mt-12 pb-10 px-4 border-t border-slate-100/60 relative z-0">
+    <div class="max-w-3xl mx-auto flex items-center justify-center gap-2.5 pt-8">
+        
+        <a href="https://codetecx.com" target="_blank" class="flex items-center group transition-transform hover:scale-110 active:scale-95">
+            <img src="{{ url_for('static', filename='img/logo-camaleao.png') }}" 
+                 alt="CodeTecx" 
+                 class="w-5 h-5 md:w-6 md:h-6 object-contain opacity-70 group-hover:opacity-100 transition-opacity -mt-[2px]">
+        </a>
+
+        <div class="flex items-center gap-2 text-[11px] font-semibold text-slate-500 tracking-tight leading-none">
+            <span class="whitespace-nowrap">© 2026 <span class="text-slate-700">CodeTecx Soluções</span></span>
+            <span class="opacity-30">•</span>
+            <span class="whitespace-nowrap italic opacity-80">Inteligência em Integridade</span>
+            
+            <span class="hidden md:inline-block bg-slate-100/50 px-2 py-0.5 rounded-full text-[9px] font-bold text-slate-400 uppercase tracking-tighter border border-slate-200/30 ml-1">v2.4.0</span>
+        </div>
+
+    </div>
+</footer>
+
+
     <div id="step3" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] items-center justify-center p-4 hidden">
         <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl animate-modal text-center">
             <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -482,6 +503,7 @@ document.addEventListener('DOMContentLoaded', checkCookies);
         loadModels();
         checkCookies();
     });
+    
 </script>
 </body>
 </html>
