@@ -239,6 +239,27 @@ def gerar_protocolo_dinamico(slug):
 
 @app.route('/')
 def home():
+    if not verificar_licenca(): return HTML_BLOQUEIO, 403
+    
+    # 1. Identifica quem está acessando pelo domínio
+    host_limpo = request.host.lower().strip().split(':')[0]
+    empresa_slug = DOMINIOS_CLIENTES.get(host_limpo)
+    
+    # 2. Se o domínio for reconhecido (ex: uniao.codetecx.com)
+    if empresa_slug and empresa_slug in CONFIG_EMPRESAS:
+        config = CONFIG_EMPRESAS[empresa_slug]
+        cores_atuais = CORES_SISTEMA.get(empresa_slug, CORES_SISTEMA['Uniao'])
+        ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
+        
+        # Retorna o portal da empresa direto na raiz (/)
+        return render_template('denuncia.html', 
+                                ultimo=ultimo_visto, 
+                                nome_sistema=f"Portal {config['nome']}", 
+                                unidades=config['unidades'],
+                                slug_atual=empresa_slug,
+                                cores=cores_atuais)
+
+    # 3. Se for um domínio desconhecido, aí sim mostra o aviso
     return "Por favor, acesse pelo link enviado pela sua instituição (Ex: /sol-magico)", 404
 
 @app.route('/<empresa_slug>')
