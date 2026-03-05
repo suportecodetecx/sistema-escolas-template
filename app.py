@@ -7,9 +7,8 @@ from cryptography.fernet import Fernet
 from pymongo import MongoClient 
 from datetime import timedelta
 
-# ============================================================
-# === [1] CONFIGURAÇÕES GERAIS DO SERVIDOR                 ===
-# ============================================================
+# --- CONFIGURAÇÃO INICIAL ---
+# Fuso horário de Brasília
 FUSO_BR = timezone(timedelta(hours=-3))
 
 app = Flask(__name__)
@@ -22,72 +21,86 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 def fazer_sessao_permanente():
     session.permanent = True
 
-# ATIVAÇÃO DA PROTEÇÃO CSRF
+# ATIVAÇÃO DA PROTEÇÃO CSRF (Para compatibilidade com o formulário ajustado)
 csrf = CSRFProtect(app)
 
-# ============================================================
-# === [2] CONEXÃO COM O BANCO DE DADOS (MONGODB)           ===
-# ============================================================
+# --- CONFIGURAÇÃO MONGODB ---
 MONGO_URI = "mongodb+srv://suporte_db_user:2kT3pEb8AcXFWNbk@cluster0.vw8vm8p.mongodb.net/?retryWrites=true&w=majority"
+# AJUSTE: Adicionado timeouts para evitar erros ao "acordar" o servidor
 client = MongoClient(MONGO_URI, connectTimeoutMS=30000, serverSelectionTimeoutMS=30000)
 
-# Nome do Banco de Dados principal
+# Banco de dados isolado
 db = client['sistema_empresa'] 
 col_config = db['config_admin']
 
 # ============================================================
-# === [3] IDENTIDADE VISUAL (CORES DO WHITE LABEL)         ===
-# === PARA ADICIONAR NOVA EMPRESA: ADICIONE UM BLOCO AQUI  ===
+# === [MARCA/CORES] CONFIGURAÇÃO DE WHITE LABEL           ===
 # ============================================================
 CORES_SISTEMA = {
     "sol-magico": {
-        "primaria": "#106ab9",
-        "secundaria": "#fb923c",
+        "primaria": "#106ab9",    # VERDE ESMERALDA (Mudamos do Azul para Verde)
+        "secundaria": "#fb923c",  # Cinza bem claro para fundos
         "tema": "light"
     },
     "lua-nova": {
-        "primaria": "#4f46e5",
-        "secundaria": "#fb923c",
+        "primaria": "#4f46e5",    # Roxo Indigo
+        "secundaria": "#fb923c",  # Laranja
         "tema": "light"
     },
-    "uniao": {
-        "primaria": "#475e93",
-        "secundaria": "#fb923c",
+    "Uniao": {
+        "primaria": "#475e93",    # Dark Slate (Profissional)
+        "secundaria": "#fb923c",  # Verde Sucesso
         "tema": "light"
     },
-    "do-re-mi": {
-        "primaria": "#2a27db",
-        "secundaria": "#fb923c",
+    "Do-re-mi": {
+        "primaria": "#2a27db",    # Rosa Vibrante (Para testar se muda mesmo!)
+        "secundaria": "#fb923c",  # Amarelo/Dourado
         "tema": "light"
     }
 }
 
 # ============================================================
-# === [4] NOMES (Padronizados para Minúsculo)              ===
+# === [EMPRESAS] CONFIGURAÇÃO MULTI-TENANT                ===
 # ============================================================
 CONFIG_EMPRESAS = {
-    "sol-magico": {"nome": "Sol Mágico", "unidades": ["Sol Mágico I", "Sol Mágico II"], "slug": "sol-magico"},
-    "lua-nova": {"nome": "Lua Nova", "unidades": ["Lua Nova I", "Lua Nova II"], "slug": "lua-nova"},
-    "uniao": {"nome": "União", "unidades": ["União I", "União II"], "slug": "uniao"},
-    "do-re-mi": {"nome": "Do Re Mi", "unidades": ["Do Re Mi I", "Do Re Mi II"], "slug": "do-re-mi"}
+    "sol-magico": {
+        "nome": "Sol Mágico",
+        "unidades": ["Sol Mágico I", "Sol Mágico II"],
+        "slug": "sol-magico"
+    },
+    "lua-nova": {
+        "nome": "Lua Nova",
+        "unidades": ["Lua Nova I", "Lua Nova II"],
+        "slug": "lua-nova"
+    },
+    "Uniao": {
+        "nome": "União",
+        "unidades": ["União I", "União II"],
+        "slug": "Uniao"
+    },
+    "Do-re-mi": {
+        "nome": "Do Re Mi",
+        "unidades": ["Do Re Mi I", "Do Re Mi II"],
+        "slug": "Do-re-mi"
+    }
 }
 
-# ============================================================
-# === [5] DOMÍNIOS (O Segredo para parar o Erro 404)       ===
-# ============================================================
 DOMINIOS_CLIENTES = {
-    # Vercel (O que você já configurou lá)
-    'uniao.codetecx.com': 'uniao',
+    # --- DOMÍNIOS VERCEL (O que você está usando agora) ---
+    'uniao.codetecx.com': 'Uniao',
     'sol-magico.codetecx.com': 'sol-magico',
     'lua-nova.codetecx.com': 'lua-nova',
+    'sistema-escolas-template.vercel.app': 'sol-magico',
 
-    # Local (Porta 8000)
-    'localhost:8000': 'uniao', 
-    '127.0.0.1:8000': 'uniao',
-    '0.0.0.0:8000': 'uniao',
+    # --- ACESSO LOCAL (Para o seu VS Code funcionar) ---
+    'localhost:8000': 'Uniao',
+    '127.0.0.1:8000': 'Uniao',
 
-    # Link padrão Vercel
-    'sistema-escolas-template.vercel.app': 'sol-magico'
+    # --- DOMÍNIOS PRÓPRIOS (Futuro) ---
+    'solmagico.com.br': 'sol-magico',
+    'luanova.com.br': 'lua-nova',
+    'uniaogestao.com.br': 'Uniao',
+    'doremi.com.br': 'Do-re-mi'
 }
 
 CHAVE_MESTRA = b'U2ZLBCXpcy_pEcsjdgCSxoZbYrbneHPDsSA47mso0xw='
@@ -95,13 +108,13 @@ cipher_suite = Fernet(CHAVE_MESTRA)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 
 
 
-# ============================================================
-# === [5] MOTOR DE CUSTOMIZAÇÃO (CONTEXT PROCESSOR)        ===
-# ============================================================
+# --- CONTEXT PROCESSOR (WHITE LABEL) ---
 @app.context_processor
 def inject_empresa_context():
+    # 1. Tenta pegar o slug da URL
     slug = request.view_args.get('empresa_slug') if request.view_args else None
     
+    # 2. Se não achou, tenta pelo Referer (de onde o usuário veio)
     if not slug:
         ref = request.referrer or ""
         for s in CONFIG_EMPRESAS.keys():
@@ -109,23 +122,31 @@ def inject_empresa_context():
                 slug = s
                 break
 
+    # 3. Se não achou, tenta pelo Host (Domínio)
+   # 3. Se não achou, tenta pelo Host (Domínio)
     if not slug:
-        host = request.host
-        slug = DOMINIOS_CLIENTES.get(host)
+        # Primeiro limpamos o endereço (remove :8000, :443 e espaços)
+        host_limpo = request.host.lower().strip().split(':')[0]
+        # Agora buscamos o slug usando o host já tratado
+        slug = DOMINIOS_CLIENTES.get(host_limpo)
 
+    # 4. SEGURANÇA MÁXIMA: Se slug for None ou NÃO existir nos dicionários
     if not slug or slug not in CONFIG_EMPRESAS:
         slug = 'sol-magico'
 
+    # 5. Busca os dados usando .get() para evitar quebras
     dados_padrao = CONFIG_EMPRESAS.get('sol-magico')
     cores_padrao = CORES_SISTEMA.get('sol-magico')
 
     dados = CONFIG_EMPRESAS.get(slug, dados_padrao).copy()
     cores = CORES_SISTEMA.get(slug, cores_padrao)
     
+    # 6. Preenche as cores garantindo que 'cores' não seja None
     dados['cor_primaria'] = cores.get('primaria', '#059669')
     dados['cor_secundaria'] = cores.get('secundaria', '#fbbf24')
     dados['tema'] = cores.get('tema', 'light')
     
+    # 7. IMPORTANTE: Envia o estado do login para o HTML (resolve o erro do botão)
     status_login = session.get('admin_logado', False)
     
     return dict(
@@ -136,13 +157,12 @@ def inject_empresa_context():
     )
 
 
-# ============================================================
-# === [6] GESTÃO DE USUÁRIOS E ACESSOS                     ===
-# === ADICIONE OU MUDE SENHAS DE ADMINISTRADORES AQUI      ===
-# ============================================================
+# --- INICIALIZAÇÃO DE SEGURANÇA ---
 def inicializar_admin_config():
     acessos_mestre = [
-        # MASTER (Codetecx)
+        # ============================================================
+        # [MASTER] - CODETECX (Acesso Total / Vê todas as empresas)
+        # ============================================================
         {
             "user": "suporte_codetecx", 
             "pass": "Code@", 
@@ -151,20 +171,30 @@ def inicializar_admin_config():
             "empresa_exibicao": "Codetecx"
         },
         
-        # EMPRESA: UNIÃO
+        # ============================================================
+        # [EMPRESA: UNIÃO]
+        # ============================================================
         {"user": "admin", "pass": "2821", "nome": "Direção União", "unidade": "Uniao", "empresa_exibicao": "União"},
         {"user": "uniao2", "pass": "1234", "nome": "Auxiliar União", "unidade": "Uniao", "empresa_exibicao": "União"},
 
-        # EMPRESA: DO-RE-MI
+        # ============================================================
+        # [EMPRESA: DO-RE-MI]
+        # ============================================================
         {"user": "admin2", "pass": "1234", "nome": "Gestão Do Re Mi", "unidade": "Do-re-mi", "empresa_exibicao": "Do Re Mi"},
+        # Se quiser adicionar outro da Do-re-mi, coloque abaixo desta linha
 
-        # EMPRESA: SOL MÁGICO
+        # ============================================================
+        # [EMPRESA: SOL MÁGICO]
+        # ============================================================
         {"user": "AdminSol", "pass": "1234", "nome": "Direção Sol Mágico", "unidade": "sol-magico", "empresa_exibicao": "Sol Mágico"},
 
-        # EMPRESA: LUA NOVA
+        # ============================================================
+        # [EMPRESA: LUA NOVA]
+        # ============================================================
         {"user": "AdminLua", "pass": "1234", "nome": "Direção Lua Nova", "unidade": "lua-nova", "empresa_exibicao": "Lua Nova"}
     ]
     
+    # Processa a lista e salva no MongoDB (atualiza se já existir ou cria se for novo)
     for credencial in acessos_mestre:
         col_config.update_one(
             {"user": credencial["user"]}, 
@@ -174,9 +204,7 @@ def inicializar_admin_config():
 
 inicializar_admin_config()
 
-# ============================================================
-# === [7] SEGURANÇA E LICENCIAMENTO                        ===
-# ============================================================
+# --- TRAVA DE LICENCIAMENTO ---
 DATA_EXPIRACAO = "2026-12-24" 
 def verificar_licenca():
     try:
@@ -206,7 +234,7 @@ def gerar_protocolo_dinamico(slug):
     return f"{data_hoje}-{str(contador).zfill(4)}"
 
 # ==========================================
-# [ROTAS DO USUÁRIO (FRONT-END)]
+# [ROTAS DO USUÁRIO]
 # ==========================================
 
 @app.route('/')
@@ -220,7 +248,9 @@ def home_empresa(empresa_slug):
     if not config:
         return "Empresa não encontrada", 404
         
+    # ADICIONE ESTA LINHA ABAIXO:
     cores_atuais = CORES_SISTEMA.get(empresa_slug, CORES_SISTEMA['Uniao'])
+    
     ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
     
     return render_template('denuncia.html', 
@@ -228,7 +258,7 @@ def home_empresa(empresa_slug):
                             nome_sistema=f"Portal {config['nome']}", 
                             unidades=config['unidades'],
                             slug_atual=empresa_slug,
-                            cores=cores_atuais)
+                            cores=cores_atuais) # <--- ENVIANDO AS CORES
 
 @app.route('/politica-privacidade')
 def politica():
@@ -283,7 +313,7 @@ def enviar():
     except Exception as e: return jsonify({"status": "erro", "msg": str(e)}), 500
 
 # ==========================================
-# [GESTÃO E DASHBOARD (BACK-END)]
+# [GESTÃO E DASHBOARD]
 # ==========================================
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -300,6 +330,7 @@ def login():
         if user_no_banco and str(user_no_banco.get('pass')) == str(senha_digitada):
             session.clear()
             
+            # Pega o nome da empresa para exibir no Dashboard
             empresa_nome = user_no_banco.get('empresa_exibicao', 'Sistema')
             
             session.update({
@@ -307,7 +338,7 @@ def login():
                 'admin_user': user_no_banco.get('user'),
                 'admin_nome': user_no_banco.get('nome', 'Administrador'),
                 'admin_unidade': user_no_banco.get('unidade', 'Geral'),
-                'admin_empresa_nome': empresa_nome 
+                'admin_empresa_nome': empresa_nome # Aqui fica "Codetecx" ou o nome da empresa
             })
             return redirect(url_for('dashboard'))
             
@@ -342,9 +373,12 @@ def dashboard():
         for d in denuncias:
             d['colecao_origem'] = nome_colecao
 
+    # === CORREÇÃO PARA EVITAR O ERRO NONETYPE NO HTML ===
     for d in denuncias:
+        # Se o status não existir no banco ou for None, preenchemos com um texto padrão
         if not d.get('status'):
             d['status'] = "Recebido / Em Triagem"
+    # ===================================================
 
     return render_template('dashboard.html', 
                             denuncias=denuncias, 
@@ -395,9 +429,9 @@ def alterar_senha():
         
     return "Erro", 400
 
-# ============================================================
-# === [SISTEMA DE DOSSIÊ - IMPRESSÃO SEGURA]               ===
-# ============================================================
+# ==========================================
+# [SISTEMA DE DOSSIÊ - IMPRESSÃO SEGURA]
+# ==========================================
 @app.route('/gestao/<prot>')
 def area_segura(prot):
     if not session.get('admin_logado'): return redirect(url_for('login'))
@@ -414,14 +448,15 @@ def area_segura(prot):
 
     if not d: return "Não encontrado", 404
 
-    # --- LÓGICA DE SIGILO ---
+    # --- AJUSTE 1: LÓGICA DE SIGILO ---
     email_banco = d.get('email_contato', '').strip()
     if not email_banco or email_banco.upper() in ["ANÔNIMO", "ANONIMO", "NENHUM"]:
         id_seguro = "SIGILOSO / ANÔNIMO"
     else:
         id_seguro = email_banco
 
-    # --- TOKEN DINÂMICO POR IMPRESSÃO ---
+    # --- AJUSTE 2: TOKEN DINÂMICO (Gera um novo a cada carregamento de página/impressão) ---
+    # Usamos o timestamp atual + protocolo para o hash ser sempre diferente
     agora_agora = datetime.now().strftime('%d%m%Y%H%M%S%f')
     token_auth = hashlib.md5(f"{prot}{agora_agora}".encode()).hexdigest().upper()[:20]
     
@@ -501,8 +536,6 @@ def area_segura(prot):
     """
     return make_response(conteudo_html)
 
-# ============================================================
-# === [EXECUTOR DO APP]                                    ===
-# ============================================================
 if __name__ == '__main__':
+    # O host='0.0.0.0' é o segredo para o celular conseguir entrar
     app.run(debug=True, host='0.0.0.0', port=8000, use_reloader=False)
