@@ -97,11 +97,10 @@ DOMINIOS_CLIENTES = {
     'sol-magico.codetecx.com': 'sol-magico',
     'lua-nova.codetecx.com': 'lua-nova',
 
-    # --- ACESSO LOCAL (Para seus testes no VS Code) ---
-    # Nota: localhost:5000 sempre abrirá uma empresa padrão. 
-    # Mude o valor à direita para testar outra empresa no seu PC.
-    'localhost:5000': 'sol-magico', 
-    '127.0.0.1:5000': 'sol-magico',
+    # --- ACESSO LOCAL (Ajustado para sua porta 8000) ---
+    'localhost:8000': 'sol-magico', 
+    '127.0.0.1:8000': 'sol-magico',
+    '0.0.0.0:8000': 'sol-magico',
 
     # --- DOMÍNIOS PRÓPRIOS (Reserva/Futuro) ---
     'uniaogestao.com.br': 'Uniao',
