@@ -50,12 +50,12 @@ CORES_SISTEMA = {
         "secundaria": "#fb923c",
         "tema": "light"
     },
-    "Uniao": {
+    "uniao": {
         "primaria": "#475e93",
         "secundaria": "#fb923c",
         "tema": "light"
     },
-    "Do-re-mi": {
+    "do-re-mi": {
         "primaria": "#2a27db",
         "secundaria": "#fb923c",
         "tema": "light"
@@ -63,52 +63,30 @@ CORES_SISTEMA = {
 }
 
 # ============================================================
-# === [4] CONFIGURAÇÃO DE UNIDADES E NOMES                 ===
-# === PARA ADICIONAR NOVA EMPRESA: ADICIONE UM BLOCO AQUI  ===
+# === [4] NOMES (Padronizados para Minúsculo)              ===
 # ============================================================
 CONFIG_EMPRESAS = {
-    "sol-magico": {
-        "nome": "Sol Mágico",
-        "unidades": ["Sol Mágico I", "Sol Mágico II"],
-        "slug": "sol-magico"
-    },
-    "lua-nova": {
-        "nome": "Lua Nova",
-        "unidades": ["Lua Nova I", "Lua Nova II"],
-        "slug": "lua-nova"
-    },
-    "Uniao": {
-        "nome": "União",
-        "unidades": ["União I", "União II"],
-        "slug": "Uniao"
-    },
-    "Do-re-mi": {
-        "nome": "Do Re Mi",
-        "unidades": ["Do Re Mi I", "Do Re Mi II"],
-        "slug": "Do-re-mi"
-    }
+    "sol-magico": {"nome": "Sol Mágico", "unidades": ["Sol Mágico I", "Sol Mágico II"], "slug": "sol-magico"},
+    "lua-nova": {"nome": "Lua Nova", "unidades": ["Lua Nova I", "Lua Nova II"], "slug": "lua-nova"},
+    "uniao": {"nome": "União", "unidades": ["União I", "União II"], "slug": "uniao"},
+    "do-re-mi": {"nome": "Do Re Mi", "unidades": ["Do Re Mi I", "Do Re Mi II"], "slug": "do-re-mi"}
 }
 
-# Configuração de Domínios (Caso a empresa tenha domínio próprio)
+# ============================================================
+# === [5] DOMÍNIOS (O Segredo para parar o Erro 404)       ===
+# ============================================================
 DOMINIOS_CLIENTES = {
-    # --- ACESSO NA VERCEL (Subdomínios Codetecx) ---
-    'uniao.codetecx.com': 'Uniao',
-    'do-re-mi.codetecx.com': 'Do-re-mi',
+    # Vercel (O que você já configurou lá)
+    'uniao.codetecx.com': 'uniao',
     'sol-magico.codetecx.com': 'sol-magico',
     'lua-nova.codetecx.com': 'lua-nova',
 
-    # --- ACESSO LOCAL (Ajustado para sua porta 8000) ---
-    'localhost:8000': 'sol-magico', 
-    '127.0.0.1:8000': 'sol-magico',
-    '0.0.0.0:8000': 'sol-magico',
+    # Local (Porta 8000)
+    'localhost:8000': 'uniao', 
+    '127.0.0.1:8000': 'uniao',
+    '0.0.0.0:8000': 'uniao',
 
-    # --- DOMÍNIOS PRÓPRIOS (Reserva/Futuro) ---
-    'uniaogestao.com.br': 'Uniao',
-    'doremi.com.br': 'Do-re-mi',
-    'solmagico.com.br': 'sol-magico',
-    'luanova.com.br': 'lua-nova',
-
-    # --- LINK PADRÃO DA VERCEL ---
+    # Link padrão Vercel
     'sistema-escolas-template.vercel.app': 'sol-magico'
 }
 
