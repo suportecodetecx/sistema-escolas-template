@@ -331,9 +331,22 @@ def login():
         usuario_digitado = request.form.get('user')
         senha_digitada = request.form.get('pass')
         
+        # 1. Identifica em qual site o usuário está tentando logar agora
+        host_limpo = request.host.lower().strip().split(':')[0]
+        slug_da_pagina_atual = DOMINIOS_CLIENTES.get(host_limpo)
+
+        # 2. Busca o usuário no MongoDB
         user_no_banco = col_config.find_one({"user": usuario_digitado})
 
         if user_no_banco and str(user_no_banco.get('pass')) == str(senha_digitada):
+            unidade_do_user = user_no_banco.get('unidade')
+            
+            # --- 🛡️ TRAVA DE SEGURANÇA MULTI-TENANT ---
+            # Permite se for o Suporte Master (Geral) OU se a unidade bater com o domínio
+            if unidade_do_user != "Geral" and unidade_do_user != slug_da_pagina_atual:
+                return render_template('login.html', erro="Acesso negado: Este usuário não pertence a esta instituição.")
+            # ------------------------------------------
+
             session.clear()
             empresa_nome = user_no_banco.get('empresa_exibicao', 'Sistema')
             
@@ -341,12 +354,12 @@ def login():
                 'admin_logado': True,
                 'admin_user': user_no_banco.get('user'),
                 'admin_nome': user_no_banco.get('nome', 'Administrador'),
-                'admin_unidade': user_no_banco.get('unidade', 'Geral'),
+                'admin_unidade': unidade_do_user,
                 'admin_empresa_nome': empresa_nome
             })
             return redirect(url_for('dashboard'))
             
-        return render_template('login.html', erro="Incorreto")
+        return render_template('login.html', erro="Usuário ou senha incorretos")
     
     return render_template('login.html')
 
