@@ -1,10 +1,14 @@
-from flask import Flask, render_template, request, jsonify, make_response, session, redirect, url_for, flash
-from flask_wtf.csrf import CSRFProtect, generate_csrf
-import json, os, hashlib, base64
+"""
+Módulo de Configuração e Inicialização - Sistema CodeTecx 2026
+"""
+import os
+import hashlib
+import base64
 from datetime import datetime, timedelta, timezone
-from werkzeug.utils import secure_filename
+from flask import Flask, render_template, request, jsonify, make_response, session, redirect, url_for
+from flask_wtf.csrf import CSRFProtect
 from cryptography.fernet import Fernet
-from pymongo import MongoClient 
+from pymongo import MongoClient
 
 # --- CONFIGURAÇÃO INICIAL ---
 # Fuso horário de Brasília
@@ -19,6 +23,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
 @app.before_request
 def fazer_sessao_permanente():
+    """Define a sessão como permanente."""
     session.permanent = True
 
 # ATIVAÇÃO DA PROTEÇÃO CSRF (Para compatibilidade com o formulário ajustado)
@@ -28,14 +33,14 @@ csrf = CSRFProtect(app)
 MONGO_URI = "mongodb+srv://suporte_db_user:2kT3pEb8AcXFWNbk@cluster0.vw8vm8p.mongodb.net/?retryWrites=true&w=majority"
 # ✅ AJUSTE 3: Adicionado tlsAllowInvalidCertificates para estabilidade no Vercel
 client = MongoClient(
-    MONGO_URI, 
-    connectTimeoutMS=30000, 
+    MONGO_URI,
+    connectTimeoutMS=30000,
     serverSelectionTimeoutMS=30000,
     tlsAllowInvalidCertificates=True
 )
 
 # Banco de dados isolado
-db = client['sistema_empresa'] 
+db = client['sistema_empresa']
 col_config = db['config_admin']
 
 # ============================================================
@@ -111,15 +116,15 @@ DOMINIOS_CLIENTES = {
 
 CHAVE_MESTRA = b'U2ZLBCXpcy_pEcsjdgCSxoZbYrbneHPDsSA47mso0xw='
 cipher_suite = Fernet(CHAVE_MESTRA)
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 
-
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 
 # --- CONTEXT PROCESSOR (WHITE LABEL) ---
 @app.context_processor
 def inject_empresa_context():
+    """Injeta contexto da empresa nos templates."""
     # 1. Tenta pegar o slug da URL
     slug = request.view_args.get('empresa_slug') if request.view_args else None
-    
+
     # 2. Se não achou, tenta pelo Referer (de onde o usuário veio)
     if not slug:
         ref = request.referrer or ""
@@ -145,48 +150,53 @@ def inject_empresa_context():
 
     dados = CONFIG_EMPRESAS.get(slug, dados_padrao).copy()
     cores = CORES_SISTEMA.get(slug, cores_padrao)
-    
+
     # 6. Preenche as cores garantindo que 'cores' não seja None
     dados['cor_primaria'] = cores.get('primaria', '#059669')
     dados['cor_secundaria'] = cores.get('secundaria', '#fbbf24')
     dados['tema'] = cores.get('tema', 'light')
-    
+
     # 7. IMPORTANTE: Envia o estado do login para o HTML (resolve o erro do botão)
     status_login = session.get('admin_logado', False)
-    
+
     return dict(
-        empresa_site=dados, 
-        slug_site=slug, 
-        estilo_site=cores, 
+        empresa_site=dados,
+        slug_site=slug,
+        estilo_site=cores,
         admin_logado=status_login
     )
 
-
 # --- INICIALIZAÇÃO DE SEGURANÇA ---
 def inicializar_admin_config():
+    """Inicializa configurações de acesso administrativo."""
     acessos_mestre = [
-        # [MASTER] - CODETECX
+        # [MASTER] - CODETECX.
         {
-            "user": "suporte_codetecx", 
-            "pass": "Code@", 
-            "nome": "Suporte Técnico", 
-            "unidade": "Geral", 
+            "user": "suporte_codetecx",
+            "pass": "Code@",
+            "nome": "Suporte Técnico",
+            "unidade": "Geral",
             "empresa_exibicao": "Codetecx"
         },
         # [EMPRESA: UNIÃO]
-        {"user": "admin", "pass": "2821", "nome": "Direção União", "unidade": "Uniao", "empresa_exibicao": "União"},
-        {"user": "uniao2", "pass": "1234", "nome": "Auxiliar União", "unidade": "Uniao", "empresa_exibicao": "União"},
+        {"user": "admin", "pass": "2821", "nome": "Direção União",
+         "unidade": "Uniao", "empresa_exibicao": "União"},
+        {"user": "uniao2", "pass": "1234", "nome": "Auxiliar União",
+         "unidade": "Uniao", "empresa_exibicao": "União"},
         # [EMPRESA: DO-RE-MI]
-        {"user": "admin2", "pass": "1234", "nome": "Gestão Do Re Mi", "unidade": "Do-re-mi", "empresa_exibicao": "Do Re Mi"},
+        {"user": "admin2", "pass": "1234", "nome": "Gestão Do Re Mi",
+         "unidade": "Do-re-mi", "empresa_exibicao": "Do Re Mi"},
         # [EMPRESA: SOL MÁGICO]
-        {"user": "AdminSol", "pass": "1234", "nome": "Direção Sol Mágico", "unidade": "sol-magico", "empresa_exibicao": "Sol Mágico"},
+        {"user": "AdminSol", "pass": "1234", "nome": "Direção Sol Mágico",
+         "unidade": "sol-magico", "empresa_exibicao": "Sol Mágico"},
         # [EMPRESA: LUA NOVA]
-        {"user": "AdminLua", "pass": "1234", "nome": "Direção Lua Nova", "unidade": "lua-nova", "empresa_exibicao": "Lua Nova"}
+        {"user": "AdminLua", "pass": "1234", "nome": "Direção Lua Nova",
+         "unidade": "lua-nova", "empresa_exibicao": "Lua Nova"}
     ]
-    
+
     for credencial in acessos_mestre:
         col_config.update_one(
-            {"user": credencial["user"]}, 
+            {"user": credencial["user"]},
             {"$set": credencial},
             upsert=True
         )
