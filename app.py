@@ -1,11 +1,24 @@
 """
 Módulo de Configuração e Inicialização - Sistema CodeTecx 2026
 """
+
 import os
 import hashlib
 import base64
+
 from datetime import datetime, timedelta, timezone
-from flask import Flask, render_template, request, jsonify, make_response, session, redirect, url_for
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    make_response,
+    session,
+    redirect,
+    url_for
+)
+
 from flask_wtf.csrf import CSRFProtect
 from cryptography.fernet import Fernet
 from pymongo import MongoClient
@@ -203,14 +216,37 @@ def inicializar_admin_config():
 
 inicializar_admin_config()
 
-# --- TRAVA DE LICENCIAMENTO ---
-DATA_EXPIRACAO = "2026-12-24" 
-def verificar_licenca():
+
+# --- TRAVA DE LICENCIAMENTO POR EMPRESA ---
+LICENCAS = {
+    "uniao": "2026-12-24",
+    "sol-magico": "2026-12-24",
+    "lua-nova": "2026-12-24",
+    "do-re-mi": "2026-12-24" # Adicionei para garantir o dicionário completo
+}
+
+def verificar_licenca(slug_empresa=None):
+    """Verifica se a empresa possui licença ativa para a data atual."""
     try:
-        data_limite = datetime.strptime(DATA_EXPIRACAO, '%Y-%m-%d')
+        # Se não vier slug, definimos um padrão para não quebrar a função
+        if not slug_empresa:
+            slug_empresa = "uniao"
+
+        # Converte para minúsculo para bater com as chaves do dicionário LICENCAS
+        slug_limpo = str(slug_empresa).lower()
+        
+        data_str = LICENCAS.get(slug_limpo)
+
+        if not data_str:
+            return False
+
+        data_limite = datetime.strptime(data_str, "%Y-%m-%d")
         agora = datetime.now(FUSO_BR).replace(tzinfo=None)
+
         return agora <= data_limite
-    except: return False
+
+    except Exception:
+        return False
 
 HTML_BLOQUEIO = """
 <!DOCTYPE html>
@@ -238,14 +274,21 @@ def gerar_protocolo_dinamico(slug):
 
 @app.route('/')
 def home():
-    if not verificar_licenca(): return HTML_BLOQUEIO, 403
-    
-    # 1. Identifica quem está acessando pelo domínio
+    # 1. Identifica quem está acessando pelo domínio primeiro
     host_limpo = request.host.lower().strip().split(':')[0]
     empresa_slug = DOMINIOS_CLIENTES.get(host_limpo)
+
+    # 2. Se não identificou o domínio, define um padrão ou nega
+    if not empresa_slug:
+        # Opcional: definir 'Uniao' como padrão caso o domínio falhe
+        empresa_slug = 'Uniao' 
+
+    # 3. Agora verifica a licença passando o slug correto
+    if not verificar_licenca(empresa_slug):
+        return HTML_BLOQUEIO, 403
     
-    # Se o domínio for reconhecido, carrega a empresa. Se não, tenta padrão ou avisa.
-    if empresa_slug and empresa_slug in CONFIG_EMPRESAS:
+    # 4. Carrega as configurações da empresa identificada
+    if empresa_slug in CONFIG_EMPRESAS:
         config = CONFIG_EMPRESAS[empresa_slug]
         cores_atuais = CORES_SISTEMA.get(empresa_slug, CORES_SISTEMA['Uniao'])
         ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
@@ -261,12 +304,16 @@ def home():
 
 @app.route('/<empresa_slug>')
 def home_empresa(empresa_slug):
-    if not verificar_licenca(): return HTML_BLOQUEIO, 403
+    # ✅ AJUSTE: Passando o slug para a função e usando .lower() para evitar erro de maiúsculas/minúsculas
+    if not verificar_licenca(empresa_slug.lower()): 
+        return HTML_BLOQUEIO, 403
+        
     config = CONFIG_EMPRESAS.get(empresa_slug)
     if not config:
         return "Empresa não encontrada", 404
         
-    cores_atuais = CORES_SISTEMA.get(empresa_slug, CORES_SISTEMA['Uniao'])
+    # Busca as cores ou usa o padrão 'Uniao' caso não encontre o slug específico
+    cores_atuais = CORES_SISTEMA.get(empresa_slug, CORES_SISTEMA.get('Uniao'))
     ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
     
     return render_template('denuncia.html', 
@@ -292,13 +339,13 @@ def consultar(prot):
                 return resp
     return jsonify({"status": "Nao encontrado"}), 404
 
-def verificar_licenca():
-    try:
-        data_limite = datetime.strptime(DATA_EXPIRACAO, '%Y-%m-%d')
-        agora = datetime.now(FUSO_BR).replace(tzinfo=None)
-        return agora <= data_limite
-    except:
-        return False
+#def verificar_licenca():
+    #try:
+        #data_limite = datetime.strptime(DATA_EXPIRACAO, '%Y-%m-%d')
+        #agora = datetime.now(FUSO_BR).replace(tzinfo=None)
+        #return agora <= data_limite
+   # except:
+       # return False
 
 
 @app.route('/enviar', methods=['POST'])
