@@ -5,13 +5,13 @@ from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from cryptography.fernet import Fernet
 from pymongo import MongoClient 
-from datetime import timedelta
 
 # --- CONFIGURAÇÃO INICIAL ---
 # Fuso horário de Brasília
 FUSO_BR = timezone(timedelta(hours=-3))
 
-app = Flask(__name__)
+# ✅ AJUSTE 2: Garantindo pastas de templates e static para a Vercel
+app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = 'chave_seguranca_codetecx_2026'
 
 # --- AJUSTE: SESSÃO PERMANENTE (30 DIAS) ---
@@ -26,8 +26,13 @@ csrf = CSRFProtect(app)
 
 # --- CONFIGURAÇÃO MONGODB ---
 MONGO_URI = "mongodb+srv://suporte_db_user:2kT3pEb8AcXFWNbk@cluster0.vw8vm8p.mongodb.net/?retryWrites=true&w=majority"
-# AJUSTE: Adicionado timeouts para evitar erros ao "acordar" o servidor
-client = MongoClient(MONGO_URI, connectTimeoutMS=30000, serverSelectionTimeoutMS=30000)
+# ✅ AJUSTE 3: Adicionado tlsAllowInvalidCertificates para estabilidade no Vercel
+client = MongoClient(
+    MONGO_URI, 
+    connectTimeoutMS=30000, 
+    serverSelectionTimeoutMS=30000,
+    tlsAllowInvalidCertificates=True
+)
 
 # Banco de dados isolado
 db = client['sistema_empresa'] 
@@ -85,16 +90,17 @@ CONFIG_EMPRESAS = {
     }
 }
 
+# ✅ AJUSTE 1: Dicionário sem as portas (:8000) para bater com o host_limpo
 DOMINIOS_CLIENTES = {
-    # --- DOMÍNIOS VERCEL (O que você está usando agora) ---
+    # --- DOMÍNIOS VERCEL ---
     'uniao.codetecx.com': 'Uniao',
     'sol-magico.codetecx.com': 'sol-magico',
     'lua-nova.codetecx.com': 'lua-nova',
     'sistema-escolas-template.vercel.app': 'sol-magico',
 
-    # --- ACESSO LOCAL (Para o seu VS Code funcionar) ---
-    'localhost:8000': 'Uniao',
-    '127.0.0.1:8000': 'Uniao',
+    # --- ACESSO LOCAL (Corrigido para bater com host_limpo) ---
+    'localhost': 'Uniao',
+    '127.0.0.1': 'Uniao',
 
     # --- DOMÍNIOS PRÓPRIOS (Futuro) ---
     'solmagico.com.br': 'sol-magico',
@@ -123,7 +129,6 @@ def inject_empresa_context():
                 break
 
     # 3. Se não achou, tenta pelo Host (Domínio)
-   # 3. Se não achou, tenta pelo Host (Domínio)
     if not slug:
         # Primeiro limpamos o endereço (remove :8000, :443 e espaços)
         host_limpo = request.host.lower().strip().split(':')[0]
@@ -160,9 +165,7 @@ def inject_empresa_context():
 # --- INICIALIZAÇÃO DE SEGURANÇA ---
 def inicializar_admin_config():
     acessos_mestre = [
-        # ============================================================
-        # [MASTER] - CODETECX (Acesso Total / Vê todas as empresas)
-        # ============================================================
+        # [MASTER] - CODETECX
         {
             "user": "suporte_codetecx", 
             "pass": "Code@", 
@@ -170,31 +173,17 @@ def inicializar_admin_config():
             "unidade": "Geral", 
             "empresa_exibicao": "Codetecx"
         },
-        
-        # ============================================================
         # [EMPRESA: UNIÃO]
-        # ============================================================
         {"user": "admin", "pass": "2821", "nome": "Direção União", "unidade": "Uniao", "empresa_exibicao": "União"},
         {"user": "uniao2", "pass": "1234", "nome": "Auxiliar União", "unidade": "Uniao", "empresa_exibicao": "União"},
-
-        # ============================================================
         # [EMPRESA: DO-RE-MI]
-        # ============================================================
         {"user": "admin2", "pass": "1234", "nome": "Gestão Do Re Mi", "unidade": "Do-re-mi", "empresa_exibicao": "Do Re Mi"},
-        # Se quiser adicionar outro da Do-re-mi, coloque abaixo desta linha
-
-        # ============================================================
         # [EMPRESA: SOL MÁGICO]
-        # ============================================================
         {"user": "AdminSol", "pass": "1234", "nome": "Direção Sol Mágico", "unidade": "sol-magico", "empresa_exibicao": "Sol Mágico"},
-
-        # ============================================================
         # [EMPRESA: LUA NOVA]
-        # ============================================================
         {"user": "AdminLua", "pass": "1234", "nome": "Direção Lua Nova", "unidade": "lua-nova", "empresa_exibicao": "Lua Nova"}
     ]
     
-    # Processa a lista e salva no MongoDB (atualiza se já existir ou cria se for novo)
     for credencial in acessos_mestre:
         col_config.update_one(
             {"user": credencial["user"]}, 
@@ -245,13 +234,12 @@ def home():
     host_limpo = request.host.lower().strip().split(':')[0]
     empresa_slug = DOMINIOS_CLIENTES.get(host_limpo)
     
-    # 2. Se o domínio for reconhecido (ex: uniao.codetecx.com)
+    # Se o domínio for reconhecido, carrega a empresa. Se não, tenta padrão ou avisa.
     if empresa_slug and empresa_slug in CONFIG_EMPRESAS:
         config = CONFIG_EMPRESAS[empresa_slug]
         cores_atuais = CORES_SISTEMA.get(empresa_slug, CORES_SISTEMA['Uniao'])
         ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
         
-        # Retorna o portal da empresa direto na raiz (/)
         return render_template('denuncia.html', 
                                 ultimo=ultimo_visto, 
                                 nome_sistema=f"Portal {config['nome']}", 
@@ -259,7 +247,6 @@ def home():
                                 slug_atual=empresa_slug,
                                 cores=cores_atuais)
 
-    # 3. Se for um domínio desconhecido, aí sim mostra o aviso
     return "Por favor, acesse pelo link enviado pela sua instituição (Ex: /sol-magico)", 404
 
 @app.route('/<empresa_slug>')
@@ -269,9 +256,7 @@ def home_empresa(empresa_slug):
     if not config:
         return "Empresa não encontrada", 404
         
-    # ADICIONE ESTA LINHA ABAIXO:
     cores_atuais = CORES_SISTEMA.get(empresa_slug, CORES_SISTEMA['Uniao'])
-    
     ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
     
     return render_template('denuncia.html', 
@@ -279,7 +264,7 @@ def home_empresa(empresa_slug):
                             nome_sistema=f"Portal {config['nome']}", 
                             unidades=config['unidades'],
                             slug_atual=empresa_slug,
-                            cores=cores_atuais) # <--- ENVIANDO AS CORES
+                            cores=cores_atuais)
 
 @app.route('/politica-privacidade')
 def politica():
@@ -350,8 +335,6 @@ def login():
 
         if user_no_banco and str(user_no_banco.get('pass')) == str(senha_digitada):
             session.clear()
-            
-            # Pega o nome da empresa para exibir no Dashboard
             empresa_nome = user_no_banco.get('empresa_exibicao', 'Sistema')
             
             session.update({
@@ -359,7 +342,7 @@ def login():
                 'admin_user': user_no_banco.get('user'),
                 'admin_nome': user_no_banco.get('nome', 'Administrador'),
                 'admin_unidade': user_no_banco.get('unidade', 'Geral'),
-                'admin_empresa_nome': empresa_nome # Aqui fica "Codetecx" ou o nome da empresa
+                'admin_empresa_nome': empresa_nome
             })
             return redirect(url_for('dashboard'))
             
@@ -394,12 +377,9 @@ def dashboard():
         for d in denuncias:
             d['colecao_origem'] = nome_colecao
 
-    # === CORREÇÃO PARA EVITAR O ERRO NONETYPE NO HTML ===
     for d in denuncias:
-        # Se o status não existir no banco ou for None, preenchemos com um texto padrão
         if not d.get('status'):
             d['status'] = "Recebido / Em Triagem"
-    # ===================================================
 
     return render_template('dashboard.html', 
                             denuncias=denuncias, 
@@ -469,15 +449,12 @@ def area_segura(prot):
 
     if not d: return "Não encontrado", 404
 
-    # --- AJUSTE 1: LÓGICA DE SIGILO ---
     email_banco = d.get('email_contato', '').strip()
     if not email_banco or email_banco.upper() in ["ANÔNIMO", "ANONIMO", "NENHUM"]:
         id_seguro = "SIGILOSO / ANÔNIMO"
     else:
         id_seguro = email_banco
 
-    # --- AJUSTE 2: TOKEN DINÂMICO (Gera um novo a cada carregamento de página/impressão) ---
-    # Usamos o timestamp atual + protocolo para o hash ser sempre diferente
     agora_agora = datetime.now().strftime('%d%m%Y%H%M%S%f')
     token_auth = hashlib.md5(f"{prot}{agora_agora}".encode()).hexdigest().upper()[:20]
     
@@ -557,6 +534,6 @@ def area_segura(prot):
     """
     return make_response(conteudo_html)
 
-if __name__ == '__main__':
-    # O host='0.0.0.0' é o segredo para o celular conseguir entrar
-    app.run(debug=True, host='0.0.0.0', port=8000, use_reloader=False)
+# ✅ AJUSTE 4: Simplificado para não causar erro de porta no Vercel
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
