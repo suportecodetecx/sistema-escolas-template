@@ -292,9 +292,20 @@ def consultar(prot):
                 return resp
     return jsonify({"status": "Nao encontrado"}), 404
 
+def verificar_licenca():
+    try:
+        data_limite = datetime.strptime(DATA_EXPIRACAO, '%Y-%m-%d')
+        agora = datetime.now(FUSO_BR).replace(tzinfo=None)
+        return agora <= data_limite
+    except:
+        return False
+
+
 @app.route('/enviar', methods=['POST'])
 def enviar():
-    if not verificar_licenca(): return jsonify({"status": "erro"}), 403
+    if not verificar_licenca():
+        return jsonify({"status": "erro"}), 403
+
     try:
         slug = request.form.get('empresa_slug', 'geral')
         col_atual = db[f'denuncias_{slug}']

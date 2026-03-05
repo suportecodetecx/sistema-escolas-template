@@ -1,10 +1,10 @@
 [MESSAGES CONTROL]
 disable=
-    C0301, ; Line too long
-    C0303, ; Trailing whitespace
-    C0116, ; Missing docstring
-    C0114, ; Missing module docstring
-    C0321, ; Multiple statements on one line (os seus "if: return")
-    W0702, ; Bare except (os seus "try: except:")
-    R1735, ; Consider using dict literal
-    C0411  ; Wrong import order
+    C0301
+    C0303
+    C0116
+    C0114
+    C0321
+    W0702
+    R1735
+    C0411
