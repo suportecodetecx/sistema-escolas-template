@@ -91,10 +91,26 @@ CONFIG_EMPRESAS = {
 
 # Configuração de Domínios (Caso a empresa tenha domínio próprio)
 DOMINIOS_CLIENTES = {
+    # --- ACESSO NA VERCEL (Subdomínios Codetecx) ---
+    'uniao.codetecx.com': 'Uniao',
+    'do-re-mi.codetecx.com': 'Do-re-mi',
+    'sol-magico.codetecx.com': 'sol-magico',
+    'lua-nova.codetecx.com': 'lua-nova',
+
+    # --- ACESSO LOCAL (Para seus testes no VS Code) ---
+    # Nota: localhost:5000 sempre abrirá uma empresa padrão. 
+    # Mude o valor à direita para testar outra empresa no seu PC.
+    'localhost:5000': 'sol-magico', 
+    '127.0.0.1:5000': 'sol-magico',
+
+    # --- DOMÍNIOS PRÓPRIOS (Reserva/Futuro) ---
+    'uniaogestao.com.br': 'Uniao',
+    'doremi.com.br': 'Do-re-mi',
     'solmagico.com.br': 'sol-magico',
     'luanova.com.br': 'lua-nova',
-    'uniaogestao.com.br': 'Uniao',
-    'doremi.com.br': 'Do-re-mi'
+
+    # --- LINK PADRÃO DA VERCEL ---
+    'sistema-escolas-template.vercel.app': 'sol-magico'
 }
 
 CHAVE_MESTRA = b'U2ZLBCXpcy_pEcsjdgCSxoZbYrbneHPDsSA47mso0xw='
