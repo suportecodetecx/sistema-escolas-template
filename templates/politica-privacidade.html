@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>{{ empresa_site.nome if empresa_site else 'Canal de Integridade' }} | Política de Privacidade</title>
     
     <!-- Tailwind CSS -->
@@ -22,6 +22,12 @@
             --cor-secundaria: {{ estilo_site.secundaria if estilo_site else '#f1f5f9' }};
         }
 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: linear-gradient(135deg, #f5f5f7 0%, #ffffff 100%);
@@ -32,6 +38,7 @@
             min-height: 100vh;
             display: flex;
             align-items: center;
+            padding: 0.5rem;
         }
 
         /* CARD PRINCIPAL - Apple style */
@@ -42,10 +49,7 @@
             border: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: 0 30px 60px -20px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.02);
             transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
-        }
-
-        .premium-card:hover {
-            transform: scale(1.002);
+            width: 100%;
         }
 
         /* HEADER MODERNO */
@@ -53,7 +57,7 @@
             background: linear-gradient(135deg, var(--cor-primaria) 0%, {{ estilo_site.primaria if estilo_site else '#1d4ed8' }} 100%);
             position: relative;
             isolation: isolate;
-            padding: 3rem 2rem;
+            padding: 2.5rem 1rem 2rem 1rem;
         }
 
         .header-gradient::after {
@@ -65,22 +69,23 @@
             z-index: -1;
         }
 
-        /* BOTÃO VOLTAR - Apple style */
+        /* BOTÃO VOLTAR - Apple style - AJUSTADO PARA MOBILE */
         .back-button {
             background: rgba(255,255,255,0.2);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.3);
             border-radius: 100px;
-            padding: 0.75rem 1.25rem;
+            padding: 0.5rem 1rem;
             color: white;
-            font-size: 0.875rem;
+            font-size: 0.75rem;
             font-weight: 500;
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
             transition: all 0.2s ease;
             text-decoration: none;
+            white-space: nowrap;
         }
 
         .back-button:hover {
@@ -92,55 +97,69 @@
             transform: scale(0.98);
         }
 
+        /* CONTAINER DO BOTÃO VOLTAR - AJUSTADO */
+        .back-button-container {
+            position: absolute;
+            left: 1rem;
+            top: 1rem;
+            z-index: 20;
+        }
+
         /* TÍTULOS - Apple style */
         .title-premium {
-            font-size: clamp(2rem, 5vw, 3rem);
+            font-size: clamp(1.5rem, 6vw, 3rem);
             font-weight: 700;
             letter-spacing: -0.03em;
-            line-height: 1.1;
+            line-height: 1.2;
             color: white;
+            margin-top: 1.5rem;
+            word-break: break-word;
         }
 
         .section-title {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 600;
             letter-spacing: -0.02em;
-            margin: 2rem 0 1rem 0;
+            margin: 1.5rem 0 0.75rem 0;
             color: #1d1d1f;
             border-left: 4px solid var(--cor-primaria);
-            padding-left: 1.25rem;
+            padding-left: 1rem;
+            word-break: break-word;
         }
 
         /* TEXTO - Apple style */
         .text-premium {
             color: #4b5563;
-            line-height: 1.7;
-            margin-bottom: 1.5rem;
-            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 1.25rem;
+            font-size: 0.9375rem;
+            word-break: break-word;
         }
 
         /* LISTAS - Apple style */
         .list-premium {
             list-style: none;
             padding: 0;
-            margin: 1.5rem 0;
+            margin: 1rem 0;
         }
 
         .list-premium li {
-            padding: 0.75rem 0 0.75rem 2rem;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+            padding: 0.5rem 0 0.5rem 1.8rem;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: 0 center;
-            background-size: 1.2rem;
+            background-position: 0 0.7rem;
+            background-size: 1rem;
             color: #4b5563;
+            font-size: 0.9375rem;
+            word-break: break-word;
         }
 
         /* DESTAQUE */
         .highlight-box {
             background: {{ estilo_site.primaria if estilo_site else '#2563eb' }}08;
-            border-radius: 1.5rem;
-            padding: 1.5rem;
-            margin: 2rem 0;
+            border-radius: 1.25rem;
+            padding: 1.25rem;
+            margin: 1.5rem 0;
             border: 1px solid {{ estilo_site.primaria if estilo_site else '#2563eb' }}15;
         }
 
@@ -148,13 +167,14 @@
             color: #1d1d1f;
             font-style: italic;
             margin: 0;
+            font-size: 0.9375rem;
         }
 
         /* FOOTER MODERNO */
         .footer-premium {
             border-top: 1px solid rgba(0,0,0,0.05);
-            padding: 2rem 0 0;
-            margin-top: 3rem;
+            padding: 1.5rem 0 0;
+            margin-top: 2rem;
             text-align: center;
         }
 
@@ -165,12 +185,17 @@
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.2);
             border-radius: 100px;
-            padding: 0.5rem 1.5rem;
+            padding: 0.4rem 1rem;
             color: rgba(255,255,255,0.9);
-            font-size: 0.875rem;
+            font-size: 0.75rem;
             font-weight: 500;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
             margin-top: 1rem;
+            max-width: 90%;
+            white-space: normal;
+            text-align: center;
         }
 
         /* ANIMAÇÕES */
@@ -196,43 +221,116 @@
             border-color: var(--cor-primaria) !important;
         }
 
-        /* RESPONSIVIDADE */
-        @media (max-width: 768px) {
+        /* RESPONSIVIDADE REFORÇADA */
+        @media (max-width: 480px) {
             body {
-                padding: 1rem;
+                padding: 0.25rem;
             }
             
             .header-gradient {
-                padding: 2rem 1rem;
+                padding: 2rem 0.75rem 1.5rem 0.75rem;
+            }
+            
+            .back-button-container {
+                left: 0.75rem;
+                top: 0.75rem;
             }
             
             .back-button {
-                padding: 0.5rem 1rem;
-                font-size: 0.75rem;
+                padding: 0.4rem 0.8rem;
+                font-size: 0.7rem;
+            }
+            
+            .title-premium {
+                margin-top: 2rem;
+                font-size: 1.5rem;
+            }
+            
+            .date-badge {
+                font-size: 0.7rem;
+                padding: 0.3rem 0.8rem;
+            }
+            
+            .p-8 {
+                padding: 1.25rem !important;
             }
             
             .section-title {
-                font-size: 1.25rem;
+                font-size: 1.1rem;
+                margin: 1.25rem 0 0.5rem 0;
             }
             
             .text-premium {
-                font-size: 0.9375rem;
+                font-size: 0.875rem;
+                line-height: 1.5;
+            }
+            
+            .list-premium li {
+                font-size: 0.875rem;
+                padding: 0.4rem 0 0.4rem 1.6rem;
+                background-position: 0 0.6rem;
+            }
+            
+            .highlight-box {
+                padding: 1rem;
+                margin: 1.25rem 0;
+            }
+            
+            .footer-premium {
+                margin-top: 1.5rem;
+                padding: 1rem 0 0;
+            }
+            
+            .footer-premium .flex {
+                gap: 0.75rem;
+            }
+            
+            .footer-premium img {
+                width: 1.25rem;
+                height: 1.25rem;
+            }
+            
+            .footer-premium .text-sm {
+                font-size: 0.75rem;
+            }
+            
+            .footer-premium .text-xs {
+                font-size: 0.7rem;
+            }
+        }
+
+        /* Ajuste para telas muito pequenas */
+        @media (max-width: 360px) {
+            .title-premium {
+                font-size: 1.3rem;
+            }
+            
+            .date-badge svg {
+                display: none;
+            }
+            
+            .back-button span:not(.sm\\:hidden) {
+                display: none;
+            }
+            
+            .back-button .sm\\:hidden {
+                display: inline !important;
             }
         }
     </style>
 </head>
 
-<body class="p-4 md:p-8">
+<body>
     <div class="max-w-4xl mx-auto w-full fade-up">
-        <div class="premium-card rounded-[2.5rem] overflow-hidden animate__animated animate__fadeInUp">
+        <div class="premium-card rounded-[2rem] md:rounded-[2.5rem] overflow-hidden animate__animated animate__fadeInUp">
             
             <!-- HEADER PREMIUM -->
             <div class="header-gradient text-center relative">
                 
-                <!-- BOTÃO VOLTAR CORRIGIDO - Volta para a página inicial -->
-                <div class="absolute left-6 top-6 z-10">
+                <!-- BOTÃO VOLTAR - Container ajustado -->
+                <div class="back-button-container">
                     <a href="/" class="back-button group">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M19 12H5M12 19l-7-7 7-7"/>
                         </svg>
                         <span class="hidden sm:inline">Voltar ao Início</span>
@@ -247,18 +345,18 @@
 
                 <!-- Badge de Data -->
                 <div class="date-badge">
-                    <svg class="inline-block w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="inline-block w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                         <line x1="16" y1="2" x2="16" y2="6"/>
                         <line x1="8" y1="2" x2="8" y2="6"/>
                         <line x1="3" y1="10" x2="21" y2="10"/>
                     </svg>
-                    Última revisão: 5 de março de 2026
+                    <span>Última revisão: 5 mar 2026</span>
                 </div>
             </div>
 
             <!-- CONTEÚDO -->
-            <div class="p-8 md:p-12">
+            <div class="p-6 md:p-12">
 
                 <!-- DESTAQUE INICIAL -->
                 <div class="highlight-box">
@@ -278,63 +376,61 @@
                     informando seus direitos de privacidade e como a lei o protege.
                 </p>
 
-                <h2 class="section-title">2. Utilização de Cookies e Tecnologias Locais</h2>
+                <h2 class="section-title">2. Utilização de Cookies</h2>
                 <p class="text-premium">
-                    Este portal utiliza tecnologias de armazenamento local (cookies e localStorage) para finalidades estritamente técnicas e de segurança:
+                    Este portal utiliza tecnologias de armazenamento local para finalidades técnicas e de segurança:
                 </p>
                 <ul class="list-premium">
-                    <li><strong>Protocolo de Acompanhamento:</strong> Armazenamos seu último protocolo localmente para consulta rápida.</li>
-                    <li><strong>Segurança da Sessão:</strong> Identificadores temporários para prevenção de SPAM.</li>
-                    <li><strong>Preferências de Consentimento:</strong> Registramos sua aceitação ao banner de privacidade.</li>
+                    <li><strong>Protocolo:</strong> Armazenamos seu último protocolo para consulta rápida.</li>
+                    <li><strong>Segurança:</strong> Identificadores temporários para prevenção de SPAM.</li>
+                    <li><strong>Consentimento:</strong> Registramos sua aceitação ao banner de privacidade.</li>
                 </ul>
                 <p class="text-premium">
-                    <span class="font-semibold" style="color: var(--cor-primaria);">Nota importante:</span> Não utilizamos cookies para fins publicitários ou venda de dados.
+                    <span class="font-semibold" style="color: var(--cor-primaria);">Nota:</span> Não usamos cookies para publicidade.
                 </p>
 
-                <h2 class="section-title">3. Tipos de dados que coletamos</h2>
+                <h2 class="section-title">3. Dados coletados</h2>
                 <p class="text-premium">
-                    Coletamos Dados Pessoais quando você interage com o canal de denúncias. 
-                    <span class="font-semibold">Dados Pessoais</span> referem-se a informações que podem identificá-lo 
-                    (caso você escolha se identificar), como nome, e-mail e cargo. Coletamos automaticamente endereço IP 
-                    e metadados do navegador para auditoria de segurança.
+                    Coletamos Dados Pessoais quando você interage com o canal. 
+                    <span class="font-semibold">Dados Pessoais</span> incluem nome, e-mail e cargo (se identificado). 
+                    Coletamos automaticamente IP e metadados para segurança.
                 </p>
 
-                <h2 class="section-title">4. Utilização dos seus dados</h2>
-                <p class="text-premium">Os dados coletados são utilizados exclusivamente para:</p>
+                <h2 class="section-title">4. Uso dos dados</h2>
+                <p class="text-premium">Os dados são utilizados para:</p>
                 <ul class="list-premium">
-                    <li>Processar e investigar relatos de má conduta;</li>
-                    <li>Permitir o acompanhamento do status do relato através do protocolo;</li>
-                    <li>Gerar estatísticas anônimas de conformidade;</li>
+                    <li>Processar e investigar relatos;</li>
+                    <li>Permitir acompanhamento por protocolo;</li>
+                    <li>Gerar estatísticas anônimas;</li>
                     <li>Cumprir obrigações legais (Lei 14.457/22 e LGPD).</li>
                 </ul>
 
                 <h2 class="section-title">5. Direitos do Titular</h2>
                 <p class="text-premium">
-                    Conforme a LGPD, você tem direito a confirmar a existência de tratamento, acessar seus dados e solicitar 
-                    a correção de dados incompletos ou inexatos. Para relatos anônimos, a identificação do titular para 
-                    exercício desses direitos pode exigir a validação do protocolo gerado.
+                    Conforme a LGPD, você tem direito a acessar, corrigir ou solicitar exclusão dos seus dados. 
+                    Para relatos anônimos, é necessário o protocolo gerado.
                 </p>
 
                 <!-- FOOTER PREMIUM -->
                 <div class="footer-premium">
-                    <div class="flex flex-col items-center justify-center gap-4">
+                    <div class="flex flex-col items-center justify-center gap-3">
                         
                         <!-- Logo e Copyright -->
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2">
                             <a href="https://codetecx.com" target="_blank" 
                                class="transition-all hover:scale-110 active:scale-95">
                                 <img src="{{ url_for('static', filename='img/logo-camaleao.png') }}" 
                                      alt="CodeTecx" 
-                                     class="w-6 h-6 object-contain opacity-60 hover:opacity-100 transition-opacity">
+                                     class="w-5 h-5 md:w-6 md:h-6 object-contain opacity-60 hover:opacity-100 transition-opacity">
                             </a>
-                            <span class="text-sm text-gray-400">|</span>
-                            <span class="text-sm font-medium text-gray-500">
-                                © 2026 <span class="text-gray-700">CodeTecx Soluções</span>
+                            <span class="text-xs text-gray-400">|</span>
+                            <span class="text-xs font-medium text-gray-500">
+                                © 2026 <span class="text-gray-700">CodeTecx</span>
                             </span>
                         </div>
 
                         <!-- Descrição -->
-                        <p class="text-xs text-gray-400 max-w-md text-center">
+                        <p class="text-[0.7rem] md:text-xs text-gray-400 max-w-md text-center px-2">
                             Inteligência em Integridade para 
                             <span class="font-medium" style="color: var(--cor-primaria);">
                                 {{ empresa_site.nome if empresa_site else 'nossos clientes' }}
@@ -342,7 +438,7 @@
                         </p>
 
                         <!-- Versão -->
-                        <span class="text-[10px] font-mono text-gray-300 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                        <span class="text-[0.6rem] font-mono text-gray-300 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
                             v2.4.0
                         </span>
                     </div>
