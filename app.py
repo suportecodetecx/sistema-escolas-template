@@ -643,4 +643,4 @@ def area_segura(prot):
 
 # ✅ AJUSTE 4: Simplificado para não causar erro de porta no Vercel
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    app.run(host="0.0.0.0", port=8080)
