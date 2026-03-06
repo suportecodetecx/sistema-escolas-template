@@ -181,40 +181,31 @@ def inject_empresa_context():
 
 # --- INICIALIZAÇÃO DE SEGURANÇA ---
 def inicializar_admin_config():
-    """Inicializa configurações de acesso administrativo."""
+    """Inicializa configurações de acesso administrativo apenas se não existirem."""
     acessos_mestre = [
-        # [MASTER] - CODETECX.
-        {
-            "user": "suporte_codetecx",
-            "pass": "Code@",
-            "nome": "Suporte Técnico",
-            "unidade": "Geral",
-            "empresa_exibicao": "Codetecx"
-        },
+        # [MASTER] - CODETECX
+        {"user": "suporte_codetecx", "pass": "Code@", "nome": "Suporte Técnico", "unidade": "Geral", "empresa_exibicao": "Codetecx"},
         # [EMPRESA: UNIÃO]
-        {"user": "admin", "pass": "2821", "nome": "Direção União",
-         "unidade": "Uniao", "empresa_exibicao": "União"},
-        {"user": "uniao2", "pass": "1234", "nome": "Auxiliar União",
-         "unidade": "Uniao", "empresa_exibicao": "União"},
+        {"user": "admin", "pass": "2821", "nome": "Direção União", "unidade": "Uniao", "empresa_exibicao": "União"},
+        {"user": "uniao2", "pass": "1234", "nome": "Auxiliar União", "unidade": "Uniao", "empresa_exibicao": "União"},
         # [EMPRESA: DO-RE-MI]
-        {"user": "admin2", "pass": "1234", "nome": "Gestão Do Re Mi",
-         "unidade": "Do-re-mi", "empresa_exibicao": "Do Re Mi"},
+        {"user": "admin2", "pass": "1234", "nome": "Gestão Do Re Mi", "unidade": "Do-re-mi", "empresa_exibicao": "Do Re Mi"},
         # [EMPRESA: SOL MÁGICO]
-        {"user": "AdminSol", "pass": "1234", "nome": "Direção Sol Mágico",
-         "unidade": "sol-magico", "empresa_exibicao": "Sol Mágico"},
+        {"user": "AdminSol", "pass": "1234", "nome": "Direção Sol Mágico", "unidade": "sol-magico", "empresa_exibicao": "Sol Mágico"},
         # [EMPRESA: LUA NOVA]
-        {"user": "AdminLua", "pass": "1234", "nome": "Direção Lua Nova",
-         "unidade": "lua-nova", "empresa_exibicao": "Lua Nova"}
+        {"user": "AdminLua", "pass": "1234", "nome": "Direção Lua Nova", "unidade": "lua-nova", "empresa_exibicao": "Lua Nova"}
     ]
 
     for credencial in acessos_mestre:
+        # ✅ MUDANÇA: Usamos $setOnInsert para que os dados SÓ sejam gravados se o usuário for NOVO
+        # Se o usuário já existir, o MongoDB não fará nada (preservando sua nova senha)
         col_config.update_one(
             {"user": credencial["user"]},
-            {"$set": credencial},
+            {"$setOnInsert": credencial},
             upsert=True
         )
 
-inicializar_admin_config()
+#inicializar_admin_config()
 
 
 # --- TRAVA DE LICENCIAMENTO POR EMPRESA ---
@@ -493,24 +484,58 @@ def atualizar():
     )
     return redirect(url_for('dashboard'))
 
+# ==========================================
+# [FUNÇÃO CORRIGIDA - ALTERAR SENHA E USUÁRIO]
+# ==========================================
 @app.route('/alterar_acesso', methods=['POST'])
 def alterar_senha():
     if not session.get('admin_logado'): 
-        return redirect(url_for('login'))
+        return "Não autorizado", 403
         
-    usuario_atual = session.get('admin_user')
-    novo_user = request.form.get('novo_user')
-    nova_senha = request.form.get('nova_senha')
+    # O usuário que está logado agora (como ele está no banco no momento)
+    usuario_atual_na_sessao = session.get('admin_user')
     
-    if nova_senha and novo_user:
-        col_config.update_one(
-            {"user": usuario_atual}, 
-            {"$set": {"user": novo_user, "pass": str(nova_senha)}}
-        )
-        session['admin_user'] = novo_user
+    # Os novos dados que vieram do formulário
+    novo_nome_user = request.form.get('novo_user', '').strip()
+    nova_senha_texto = request.form.get('nova_senha', '').strip()
+    
+    # Prepara o dicionário de atualização
+    update_data = {}
+    
+    # Só adiciona a senha se foi fornecida
+    if nova_senha_texto:
+        update_data["pass"] = str(nova_senha_texto)
+    
+    # Só adiciona o novo nome de usuário se foi fornecido
+    if novo_nome_user:
+        update_data["user"] = novo_nome_user
+    
+    # Verifica se pelo menos um campo foi fornecido
+    if not update_data:
+        return "Nenhum dado para atualizar", 400
+    
+    # 🔴 CORREÇÃO: Agora permite atualizar apenas a senha, apenas o usuário, ou ambos
+    resultado = col_config.update_one(
+        {"user": usuario_atual_na_sessao}, 
+        {"$set": update_data}
+    )
+    
+    # Verifica se o MongoDB realmente encontrou o usuário
+    if resultado.matched_count == 0:
+        # Tenta buscar todos os usuários para debug (opcional - remover em produção)
+        todos_usuarios = list(col_config.find({}, {"user": 1, "_id": 0}))
+        usuarios_encontrados = [u.get('user') for u in todos_usuarios]
+        return f"Erro: Usuário '{usuario_atual_na_sessao}' não localizado no banco. Usuários disponíveis: {usuarios_encontrados}", 404
+    
+    # Se alterou o nome de usuário, atualiza a sessão
+    if novo_nome_user and resultado.modified_count > 0:
+        session['admin_user'] = novo_nome_user
+    
+    # Retorna sucesso
+    if resultado.modified_count > 0:
         return "OK", 200
-        
-    return "Erro", 400
+    else:
+        return "Dados já estão atualizados (nenhuma modificação necessária)", 200
 
 # ==========================================
 # [SISTEMA DE DOSSIÊ - IMPRESSÃO SEGURA]

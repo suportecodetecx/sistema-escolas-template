@@ -884,30 +884,69 @@
             }, 300);
         }
 
-        async function salvarNovoAcessoGlobal() {
-            const user = document.getElementById('novo_user_global').value;
-            const pass = document.getElementById('nova_pass_global').value;
-            if (!user || !pass) return;
+       async function salvarNovoAcessoGlobal() {
+    const user = document.getElementById('novo_user_global').value.trim();
+    const pass = document.getElementById('nova_pass_global').value.trim();
+    
+    if (!user || !pass) {
+        document.getElementById('mensagem_modal').innerText = "PREENCHA USUÁRIO E SENHA!";
+        document.getElementById('mensagem_modal').classList.remove('hidden');
+        document.getElementById('mensagem_modal').className = "text-[10px] font-bold p-3 rounded-xl uppercase text-center tracking-widest bg-red-50 text-red-600";
+        return;
+    }
 
-            const btn = event.currentTarget;
-            btn.innerHTML = '<i data-lucide="loader" class="animate-spin w-4 h-4"></i> Processando...';
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i data-lucide="loader" class="animate-spin w-4 h-4"></i> Processando...';
+    btn.disabled = true;
+    lucide.createIcons();
+
+    const fd = new FormData();
+    fd.append('novo_user', user);
+    fd.append('nova_senha', pass);
+    
+    // 🔴 CORREÇÃO: Adicionar o CSRF token
+    // Pega o token CSRF do meta tag ou do formulário
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+    if (csrfToken) {
+        fd.append('csrf_token', csrfToken);
+    }
+
+    try {
+        const response = await fetch('/alterar_acesso', { 
+            method: 'POST', 
+            body: fd,
+            // Importante: não definir headers manualmente para FormData
+        });
+        
+        if (response.ok) {
+            // Sucesso! (status 200)
+            document.getElementById('mensagem_modal').innerText = "✓ ACESSO ATUALIZADO! RECONECTANDO...";
+            document.getElementById('mensagem_modal').classList.remove('hidden');
+            document.getElementById('mensagem_modal').className = "text-[10px] font-bold p-3 rounded-xl uppercase text-center tracking-widest bg-green-50 text-green-600";
+            
+            setTimeout(() => window.location.href = '/logout', 2000);
+        } else {
+            // Erro do servidor
+            const errorText = await response.text();
+            document.getElementById('mensagem_modal').innerText = "ERRO: " + errorText.substring(0, 100); // Limita o tamanho
+            document.getElementById('mensagem_modal').classList.remove('hidden');
+            document.getElementById('mensagem_modal').className = "text-[10px] font-bold p-3 rounded-xl uppercase text-center tracking-widest bg-red-50 text-red-600";
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
             lucide.createIcons();
-
-            const fd = new FormData();
-            fd.append('novo_user', user);
-            fd.append('nova_senha', pass);
-
-            try {
-                await fetch('/alterar_acesso', { method: 'POST', body: fd });
-                document.getElementById('mensagem_modal').innerText = "ACESSO ATUALIZADO! RECONECTANDO...";
-                document.getElementById('mensagem_modal').classList.remove('hidden');
-                setTimeout(() => window.location.href = '/logout', 2000);
-            } catch (e) {
-                alert("Erro ao atualizar acesso.");
-                btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Atualizar Acesso';
-                lucide.createIcons();
-            }
         }
+    } catch (e) {
+        document.getElementById('mensagem_modal').innerText = "ERRO DE CONEXÃO";
+        document.getElementById('mensagem_modal').classList.remove('hidden');
+        document.getElementById('mensagem_modal').className = "text-[10px] font-bold p-3 rounded-xl uppercase text-center tracking-widest bg-red-50 text-red-600";
+        
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        lucide.createIcons();
+    }
+}
 
         function imprimirDossie() {
             const prot = document.getElementById('input_prot').value;
