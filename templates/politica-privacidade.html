@@ -4,38 +4,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Política de Privacidade - Codetecx & {{ empresa_site.nome if empresa_site else 'Canal de Integridade' }}
-    </title>
+    <title>{{ empresa_site.nome if empresa_site else 'Canal de Integridade' }} | Política de Privacidade</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Fonte Apple SF Pro (via Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
     <style>
+        /* Suas variáveis originais - INTOCADAS */
+        :root {
+            --cor-primaria: {{ estilo_site.primaria if estilo_site else '#2563eb' }};
+            --cor-secundaria: {{ estilo_site.secundaria if estilo_site else '#f1f5f9' }};
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f5f7 0%, #ffffff 100%);
+            line-height: 1.47059;
+            letter-spacing: -0.022em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
         }
 
-        .prose h2 {
-            color: #1e293b;
+        /* CARD PRINCIPAL - Apple style */
+        .premium-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 30px 60px -20px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.02);
+            transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        .premium-card:hover {
+            transform: scale(1.002);
+        }
+
+        /* HEADER MODERNO */
+        .header-gradient {
+            background: linear-gradient(135deg, var(--cor-primaria) 0%, {{ estilo_site.primaria if estilo_site else '#1d4ed8' }} 100%);
+            position: relative;
+            isolation: isolate;
+            padding: 3rem 2rem;
+        }
+
+        .header-gradient::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 50%, rgba(255,255,255,0.15) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* BOTÃO VOLTAR - Apple style */
+        .back-button {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 100px;
+            padding: 0.75rem 1.25rem;
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .back-button:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.02);
+        }
+
+        .back-button:active {
+            transform: scale(0.98);
+        }
+
+        /* TÍTULOS - Apple style */
+        .title-premium {
+            font-size: clamp(2rem, 5vw, 3rem);
             font-weight: 700;
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            font-size: 1.25rem;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            color: white;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin: 2rem 0 1rem 0;
+            color: #1d1d1f;
             border-left: 4px solid var(--cor-primaria);
-            padding-left: 1rem;
+            padding-left: 1.25rem;
         }
 
-        .prose p {
-            color: #475569;
+        /* TEXTO - Apple style */
+        .text-premium {
+            color: #4b5563;
             line-height: 1.7;
-            margin-bottom: 1.25rem;
-            text-align: justify;
+            margin-bottom: 1.5rem;
+            font-size: 1rem;
         }
 
-        .prose ul li {
-            color: #475569;
-            margin-bottom: 0.5rem;
+        /* LISTAS - Apple style */
+        .list-premium {
+            list-style: none;
+            padding: 0;
+            margin: 1.5rem 0;
         }
 
-        /* Classes que usam a variável definida no body */
+        .list-premium li {
+            padding: 0.75rem 0 0.75rem 2rem;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: 0 center;
+            background-size: 1.2rem;
+            color: #4b5563;
+        }
+
+        /* DESTAQUE */
+        .highlight-box {
+            background: {{ estilo_site.primaria if estilo_site else '#2563eb' }}08;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border: 1px solid {{ estilo_site.primaria if estilo_site else '#2563eb' }}15;
+        }
+
+        .highlight-box p {
+            color: #1d1d1f;
+            font-style: italic;
+            margin: 0;
+        }
+
+        /* FOOTER MODERNO */
+        .footer-premium {
+            border-top: 1px solid rgba(0,0,0,0.05);
+            padding: 2rem 0 0;
+            margin-top: 3rem;
+            text-align: center;
+        }
+
+        /* BADGE DE DATA */
+        .date-badge {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 100px;
+            padding: 0.5rem 1.5rem;
+            color: rgba(255,255,255,0.9);
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: inline-block;
+            margin-top: 1rem;
+        }
+
+        /* ANIMAÇÕES */
+        .fade-up {
+            animation: fadeUp 0.8s cubic-bezier(0.2, 0, 0, 1) forwards;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* CORES DINÂMICAS - Suas classes originais */
         .text-dinamico {
             color: var(--cor-primaria) !important;
         }
@@ -47,107 +195,161 @@
         .border-dinamico {
             border-color: var(--cor-primaria) !important;
         }
+
+        /* RESPONSIVIDADE */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .header-gradient {
+                padding: 2rem 1rem;
+            }
+            
+            .back-button {
+                padding: 0.5rem 1rem;
+                font-size: 0.75rem;
+            }
+            
+            .section-title {
+                font-size: 1.25rem;
+            }
+            
+            .text-premium {
+                font-size: 0.9375rem;
+            }
+        }
     </style>
 </head>
 
-<body class="bg-slate-50 p-6 md:p-12"
-    style="--cor-primaria: {{ estilo_site.primaria if estilo_site else '#2563eb' }}; --cor-secundaria: {{ estilo_site.secundaria if estilo_site else '#f1f5f9' }};">
-
-    <div class="max-w-4xl mx-auto bg-white shadow-xl rounded-[2rem] overflow-hidden">
-        <div class="bg-slate-900 p-8 text-center relative">
-            <a href="javascript:history.back()"
-                class="absolute left-6 top-8 text-slate-400 hover:text-white transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m15 18-6-6 6-6" />
-                </svg>
-            </a>
-
-            <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-                Política de <span class="text-dinamico">Privacidade</span>
-            </h1>
-            <p class="text-slate-400 mt-4 text-sm">
-                Esta Política de Privacidade foi revisada pela última vez em <strong>5 de março de 2026</strong>.
-            </p>
-        </div>
-
-        <div class="p-8 md:p-12 prose">
-
-            <div class="border-l-4 border-dinamico p-4 mb-8" style="background-color: var(--cor-secundaria);">
-                <p class="text-sm text-slate-800 m-0 italic">
-                    Para o Canal de Integridade <strong>{{ empresa_site.nome if empresa_site else 'da Instituição'
-                        }}</strong>, a <strong>Codetecx</strong>
-                    atua como a operadora e guardiã técnica dos dados, garantindo o sigilo e a proteção das informações
-                    enviadas.
-                </p>
-            </div>
-
-            <h2>1. Objetivo desta Política de Privacidade</h2>
-            <p>
-                A <strong>Codetecx</strong> está comprometida em proteger a sua privacidade. Elaboramos esta Política
-                para descrever nossas práticas em relação aos Dados Pessoais que coletamos dos usuários do Canal de
-                Integridade da <strong>{{ empresa_site.nome if empresa_site else 'Instituição' }}</strong>. Esta
-                Política informa sobre seus direitos de
-                privacidade e como a lei o protege.
-            </p>
-
-            <h2>2. Utilização de Cookies e Tecnologias Locais</h2>
-            <p>
-                Este portal utiliza tecnologias de armazenamento local (cookies e localStorage) para finalidades estritamente técnicas e de segurança:
-            </p>
-            <ul class="list-disc pl-6 space-y-2 mb-4 text-slate-600 text-sm">
-                <li><strong>Protocolo de Acompanhamento:</strong> Armazenamos o número do seu último protocolo localmente para facilitar sua consulta rápida, sem que você precise memorizá-lo imediatamente.</li>
-                <li><strong>Segurança da Sessão:</strong> Utilizamos identificadores temporários para evitar ataques de submissão em massa (SPAM) e garantir que o formulário seja enviado por um humano.</li>
-                <li><strong>Preferências de Consentimento:</strong> Registramos sua aceitação ao banner de privacidade para que ele não interrompa sua navegação em visitas futuras.</li>
-            </ul>
-            <p>
-                <strong>Nota:</strong> Não utilizamos cookies para fins publicitários, rastreamento de comportamento em outros sites ou venda de dados a terceiros.
-            </p>
-
-            <h2>3. Tipos de dados que coletamos</h2>
-            <p>
-                Coletamos Dados Pessoais quando você interage com o canal de denúncias. 
-                <strong>Dados Pessoais</strong> referem-se a informações que podem identificá-lo (caso você escolha se identificar), como nome, e-mail e cargo. 
-                Coletamos automaticamente o endereço IP e metadados do navegador para fins únicos de auditoria de segurança e prevenção de fraudes.
-            </p>
-
-            <h2>4. Utilização dos seus dados</h2>
-            <div class="text-slate-600">
-                <p>Os dados coletados são utilizados exclusivamente para:</p>
-                <ul class="list-disc pl-6 space-y-2 mb-4">
-                    <li>• Processar e investigar relatos de má conduta;</li>
-                    <li>• Permitir o acompanhamento do status do relato através do seu protocolo;</li>
-                    <li>• Gerar estatísticas anônimas de conformidade para a <strong>{{ empresa_site.nome if
-                            empresa_site else 'Instituição' }}</strong>;</li>
-                    <li>• Cumprir obrigações legais (Lei 14.457/22 e LGPD).</li>
-                </ul>
-            </div>
-
-            <h2>5. Direitos do Titular</h2>
-            <p>
-                Conforme a LGPD, você tem direito a confirmar a existência de tratamento, acessar seus dados e solicitar a correção de dados incompletos ou inexatos. Para relatos anônimos, a identificação do titular para exercício desses direitos pode exigir a validação do protocolo gerado no ato da denúncia.
-            </p>
-
-           <div class="mt-12 pt-8 border-t border-slate-100 text-center">
-                <div class="inline-flex items-center justify-center gap-2.5 leading-none">
-                    
-                    <a href="https://codetecx.com" target="_blank" class="inline-block align-middle transition-transform hover:scale-110 active:scale-95">
-                        <img src="{{ url_for('static', filename='img/logo-camaleao.png') }}" 
-                             alt="CodeTecx" 
-                             class="w-5 h-5 md:w-6 md:h-6 object-contain opacity-70 -mt-[2px]">
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto w-full fade-up">
+        <div class="premium-card rounded-[2.5rem] overflow-hidden animate__animated animate__fadeInUp">
+            
+            <!-- HEADER PREMIUM -->
+            <div class="header-gradient text-center relative">
+                
+                <!-- BOTÃO VOLTAR CORRIGIDO - Volta para a página inicial -->
+                <div class="absolute left-6 top-6 z-10">
+                    <a href="/" class="back-button group">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        <span class="hidden sm:inline">Voltar ao Início</span>
+                        <span class="sm:hidden">Voltar</span>
                     </a>
-                    
-                    <span class="text-[10px] md:text-[11px] font-semibold text-slate-400 tracking-tight align-middle">
-                        © 2026 <span class="text-slate-600">CodeTecx Soluções</span> 
-                        <span class="opacity-30 mx-1">•</span> 
-                        Inteligência em Integridade para {{ empresa_site.nome if empresa_site else 'Clientes' }}
-                    </span>
-                    
+                </div>
+
+                <!-- Título Principal -->
+                <h1 class="title-premium mb-2">
+                    Política de <span class="text-dinamico" style="color: white !important; opacity: 0.95;">Privacidade</span>
+                </h1>
+
+                <!-- Badge de Data -->
+                <div class="date-badge">
+                    <svg class="inline-block w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    Última revisão: 5 de março de 2026
+                </div>
+            </div>
+
+            <!-- CONTEÚDO -->
+            <div class="p-8 md:p-12">
+
+                <!-- DESTAQUE INICIAL -->
+                <div class="highlight-box">
+                    <p class="text-premium m-0">
+                        <span class="font-semibold" style="color: var(--cor-primaria);">Para o Canal de Integridade {{ empresa_site.nome if empresa_site else 'da Instituição' }}</span>, 
+                        a <span class="font-semibold" style="color: var(--cor-primaria);">Codetecx</span> atua como operadora e guardiã técnica dos dados, 
+                        garantindo sigilo e proteção das informações enviadas.
+                    </p>
+                </div>
+
+                <!-- SEÇÕES -->
+                <h2 class="section-title">1. Objetivo desta Política</h2>
+                <p class="text-premium">
+                    A <strong class="font-semibold" style="color: var(--cor-primaria);">Codetecx</strong> está comprometida em proteger sua privacidade. 
+                    Esta Política descreve nossas práticas em relação aos Dados Pessoais coletados dos usuários do Canal de Integridade da 
+                    <strong class="font-semibold" style="color: var(--cor-primaria);">{{ empresa_site.nome if empresa_site else 'Instituição' }}</strong>, 
+                    informando seus direitos de privacidade e como a lei o protege.
+                </p>
+
+                <h2 class="section-title">2. Utilização de Cookies e Tecnologias Locais</h2>
+                <p class="text-premium">
+                    Este portal utiliza tecnologias de armazenamento local (cookies e localStorage) para finalidades estritamente técnicas e de segurança:
+                </p>
+                <ul class="list-premium">
+                    <li><strong>Protocolo de Acompanhamento:</strong> Armazenamos seu último protocolo localmente para consulta rápida.</li>
+                    <li><strong>Segurança da Sessão:</strong> Identificadores temporários para prevenção de SPAM.</li>
+                    <li><strong>Preferências de Consentimento:</strong> Registramos sua aceitação ao banner de privacidade.</li>
+                </ul>
+                <p class="text-premium">
+                    <span class="font-semibold" style="color: var(--cor-primaria);">Nota importante:</span> Não utilizamos cookies para fins publicitários ou venda de dados.
+                </p>
+
+                <h2 class="section-title">3. Tipos de dados que coletamos</h2>
+                <p class="text-premium">
+                    Coletamos Dados Pessoais quando você interage com o canal de denúncias. 
+                    <span class="font-semibold">Dados Pessoais</span> referem-se a informações que podem identificá-lo 
+                    (caso você escolha se identificar), como nome, e-mail e cargo. Coletamos automaticamente endereço IP 
+                    e metadados do navegador para auditoria de segurança.
+                </p>
+
+                <h2 class="section-title">4. Utilização dos seus dados</h2>
+                <p class="text-premium">Os dados coletados são utilizados exclusivamente para:</p>
+                <ul class="list-premium">
+                    <li>Processar e investigar relatos de má conduta;</li>
+                    <li>Permitir o acompanhamento do status do relato através do protocolo;</li>
+                    <li>Gerar estatísticas anônimas de conformidade;</li>
+                    <li>Cumprir obrigações legais (Lei 14.457/22 e LGPD).</li>
+                </ul>
+
+                <h2 class="section-title">5. Direitos do Titular</h2>
+                <p class="text-premium">
+                    Conforme a LGPD, você tem direito a confirmar a existência de tratamento, acessar seus dados e solicitar 
+                    a correção de dados incompletos ou inexatos. Para relatos anônimos, a identificação do titular para 
+                    exercício desses direitos pode exigir a validação do protocolo gerado.
+                </p>
+
+                <!-- FOOTER PREMIUM -->
+                <div class="footer-premium">
+                    <div class="flex flex-col items-center justify-center gap-4">
+                        
+                        <!-- Logo e Copyright -->
+                        <div class="flex items-center gap-3">
+                            <a href="https://codetecx.com" target="_blank" 
+                               class="transition-all hover:scale-110 active:scale-95">
+                                <img src="{{ url_for('static', filename='img/logo-camaleao.png') }}" 
+                                     alt="CodeTecx" 
+                                     class="w-6 h-6 object-contain opacity-60 hover:opacity-100 transition-opacity">
+                            </a>
+                            <span class="text-sm text-gray-400">|</span>
+                            <span class="text-sm font-medium text-gray-500">
+                                © 2026 <span class="text-gray-700">CodeTecx Soluções</span>
+                            </span>
+                        </div>
+
+                        <!-- Descrição -->
+                        <p class="text-xs text-gray-400 max-w-md text-center">
+                            Inteligência em Integridade para 
+                            <span class="font-medium" style="color: var(--cor-primaria);">
+                                {{ empresa_site.nome if empresa_site else 'nossos clientes' }}
+                            </span>
+                        </p>
+
+                        <!-- Versão -->
+                        <span class="text-[10px] font-mono text-gray-300 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                            v2.4.0
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
 </body>
 
 </html>
