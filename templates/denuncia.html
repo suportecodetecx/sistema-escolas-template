@@ -516,30 +516,44 @@
         </div>
     </div>
 
-    <!-- MODAL CONSULTA (PRESERVADO) -->
-    <div id="modalConsulta" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 items-center justify-center p-4 hidden animate__animated animate__fadeIn">
-        <div class="modal-modern max-w-md w-full rounded-[2.5rem] p-8 animate__animated animate__zoomIn">
-            <h3 class="text-xl font-black text-brand-primary uppercase italic mb-6">Consultar Andamento</h3>
-            <input type="text" id="inputProt" 
-                   class="input-field mb-4 uppercase" 
-                   placeholder="Digite seu protocolo">
-            <div id="resultConsulta" class="mb-6 p-4 rounded-2xl hidden"
-                 style="background: {{ cores.secundaria }}10;">
-                <p id="statusTxt" class="font-bold text-gray-800 text-sm"></p>
+    <!-- MODAL CONSULTA - CORRIGIDO COM PARECER -->
+<div id="modalConsulta" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 items-center justify-center p-4 hidden animate__animated animate__fadeIn">
+    <div class="modal-modern max-w-md w-full rounded-[2.5rem] p-8 animate__animated animate__zoomIn">
+        <h3 class="text-xl font-black text-brand-primary uppercase italic mb-6">Consultar Andamento</h3>
+        
+        <input type="text" id="inputProt" 
+               class="input-field mb-4 uppercase" 
+               placeholder="Digite seu protocolo">
+        
+        <!-- Área de resultado - AGORA COM STATUS E PARECER -->
+        <div id="resultConsulta" class="mb-6 p-5 rounded-2xl hidden" style="background: {{ cores.secundaria }}10;">
+            
+            <!-- STATUS -->
+            <div class="mb-4">
+                <p class="text-[10px] font-black uppercase mb-1" style="color: var(--cor-primaria);">STATUS ATUAL:</p>
+                <p id="statusTxt" class="font-bold text-gray-800 text-sm bg-white p-3 rounded-xl border border-gray-100"></p>
             </div>
-            <div class="flex gap-3">
-                <button onclick="buscarProtocolo()" id="btnBusca" 
-                        class="flex-1 btn-orange text-xs py-4">
-                    Pesquisar
-                </button>
-                <button onclick="fecharModal()" 
-                        class="flex-1 bg-gray-100 text-gray-500 font-black py-4 rounded-2xl uppercase text-xs hover:bg-gray-200 transition-all">
-                    Fechar
-                </button>
+            
+            <!-- PARECER DO COMITÊ -->
+            <div>
+                <p class="text-[10px] font-black uppercase mb-1" style="color: var(--cor-primaria);">PARECER TÉCNICO:</p>
+                <p id="parecerTxt" class="text-gray-600 text-sm bg-white p-3 rounded-xl border border-gray-100 italic max-h-32 overflow-y-auto"></p>
             </div>
+            
+        </div>
+        
+        <div class="flex gap-3">
+            <button onclick="buscarProtocolo()" id="btnBusca" 
+                    class="flex-1 btn-orange text-xs py-4">
+                Pesquisar
+            </button>
+            <button onclick="fecharModal()" 
+                    class="flex-1 bg-gray-100 text-gray-500 font-black py-4 rounded-2xl uppercase text-xs hover:bg-gray-200 transition-all">
+                Fechar
+            </button>
         </div>
     </div>
-
+</div>
     <!-- COOKIE BANNER (PRESERVADO) -->
     <div id="cookie-banner" class="fixed bottom-6 left-6 right-6 md:left-auto md:max-w-sm z-[100] hidden animate__animated animate__fadeInUp">
         <div class="modal-modern p-6 rounded-[2.5rem] shadow-2xl">
@@ -743,55 +757,87 @@
             console.log("🧹 Modal fechado e limpo");
         }
 
-        async function buscarProtocolo() {
-            const prot = document.getElementById('inputProt').value.trim();
-            const resDiv = document.getElementById('resultConsulta');
-            const statusTxt = document.getElementById('statusTxt');
-            const btn = document.getElementById('btnBusca');
+       async function buscarProtocolo() {
+    const prot = document.getElementById('inputProt').value.trim();
+    const resDiv = document.getElementById('resultConsulta');
+    const statusTxt = document.getElementById('statusTxt');
+    const parecerTxt = document.getElementById('parecerTxt');  // 🔥 NOVO: campo do parecer
+    const btn = document.getElementById('btnBusca');
+    
+    console.log("🔍 Buscando protocolo:", prot);
+    
+    if (!prot) {
+        alert("Digite um protocolo");
+        return;
+    }
+    
+    btn.innerText = "...";
+    btn.disabled = true;
+    
+    try {
+        // 🔥 Adiciona timestamp para evitar cache
+        const url = `/consultar/${prot}?_=${Date.now()}`;
+        console.log("📡 URL:", url);
+        
+        const res = await fetch(url, {
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        });
+        
+        const data = await res.json();
+        console.log("📦 Resposta completa:", data);
+        
+        resDiv.classList.remove('hidden');
+        
+        if (data.status && data.status !== "Não encontrado") {
+            // 🔥 Mostra o STATUS
+            statusTxt.innerText = data.status;
             
-            console.log("🔍 Buscando protocolo:", prot);
-            
-            if (!prot) {
-                alert("Digite um protocolo");
-                return;
+            // 🔥 Mostra o PARECER (se existir)
+            if (data.parecer && data.parecer.trim() !== "" && data.parecer !== "None") {
+                parecerTxt.innerText = data.parecer;
+            } else {
+                parecerTxt.innerText = "Aguardando parecer do comitê...";
             }
             
-            btn.innerText = "...";
-            btn.disabled = true;
-            
-            try {
-                // 🔥 Adiciona timestamp para evitar cache
-                const url = `/consultar/${prot}?_=${Date.now()}`;
-                console.log("📡 URL:", url);
-                
-                const res = await fetch(url, {
-                    headers: {
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache'
-                    }
-                });
-                
-                const data = await res.json();
-                console.log("📦 Resposta:", data);
-                
-                resDiv.classList.remove('hidden');
-                
-                if (data.status && data.status !== "Não encontrado") {
-                    statusTxt.innerText = data.status;
-                    console.log("✅ Status exibido:", data.status);
-                } else {
-                    statusTxt.innerText = "Protocolo não encontrado";
-                    console.log("❌ Não encontrado");
-                }
-                
-            } catch (err) { 
-                console.error("❌ Erro:", err);
-                alert("Erro ao buscar protocolo."); 
-            } finally {
-                btn.innerText = "PESQUISAR";
-                btn.disabled = false;
-            }
+            console.log("✅ Status:", data.status);
+            console.log("✅ Parecer:", data.parecer || "Não disponível");
+        } else {
+            statusTxt.innerText = "Protocolo não encontrado";
+            parecerTxt.innerText = "";
+            console.log("❌ Não encontrado");
         }
+        
+    } catch (err) { 
+        console.error("❌ Erro na requisição:", err);
+        alert("Erro ao buscar protocolo."); 
+    } finally {
+        btn.innerText = "PESQUISAR";
+        btn.disabled = false;
+    }
+}
+
+// 🔥 Função fecharModal atualizada para limpar o parecer também
+function fecharModal() { 
+    document.getElementById('modalConsulta').style.display = 'none';
+    document.getElementById('inputProt').value = '';
+    document.getElementById('resultConsulta').classList.add('hidden');
+    document.getElementById('statusTxt').innerText = '';
+    document.getElementById('parecerTxt').innerText = '';  // 🔥 Limpa o parecer
+    console.log("🧹 Modal fechado e limpo");
+}
+
+// 🔥 Função abrirModalConsulta atualizada para começar limpo
+function abrirModalConsulta() { 
+    document.getElementById('inputProt').value = '';
+    document.getElementById('resultConsulta').classList.add('hidden');
+    document.getElementById('statusTxt').innerText = '';
+    document.getElementById('parecerTxt').innerText = '';  // 🔥 Limpa o parecer
+    document.getElementById('modalConsulta').style.display = 'flex'; 
+    console.log("📂 Modal aberto e limpo");
+}
 
         // ==========================================
         // 7. INICIALIZAÇÃO AO CARREGAR PÁGINA

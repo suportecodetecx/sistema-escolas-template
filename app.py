@@ -319,50 +319,38 @@ def politica():
 
 @app.route('/consultar/<prot>')
 def consultar(prot):
-    # 🔥 PRIORIDADE 1: Verifica se veio de uma URL com empresa_slug
+    # Identifica a empresa (código existente...)
     empresa_pela_url = None
-    
-    # Tenta pegar o referer para saber de qual página veio
     referer = request.referrer or ""
     
     for slug in CONFIG_EMPRESAS.keys():
-        if f"/{slug}" in referer or f"/{slug.lower()}" in referer:
+        if f"/{slug}" in referer:
             empresa_pela_url = slug
-            print(f"📍 Empresa identificada pelo referer: {empresa_pela_url}")
             break
     
-    # 🔥 PRIORIDADE 2: Se não achou pelo referer, usa o domínio
     if not empresa_pela_url:
         host_limpo = request.host.lower().strip().split(':')[0]
         empresa_pela_url = DOMINIOS_CLIENTES.get(host_limpo, 'sol-magico')
-        print(f"🌐 Empresa identificada pelo domínio: {empresa_pela_url}")
     
-    print(f"\n🔍 CONSULTA - Protocolo: {prot}")
-    print(f"🏢 Empresa alvo: {empresa_pela_url}")
-    
-    # Verifica licença
     if not verificar_licenca(empresa_pela_url): 
         return jsonify({"status": "Serviço Indisponível"}), 403
 
-    # Define a coleção baseada na empresa identificada
     colecao_da_empresa = f'denuncias_{empresa_pela_url}'
-    print(f"📁 Buscando na coleção: {colecao_da_empresa}")
     
-    # Lista coleções para debug
-    todas_colecoes = db.list_collection_names()
-    print(f"📚 Coleções disponíveis: {todas_colecoes}")
-    
-    # Busca APENAS na coleção da empresa correta
-    if colecao_da_empresa in todas_colecoes:
+    if colecao_da_empresa in db.list_collection_names():
         doc = db[colecao_da_empresa].find_one({"protocolo": prot})
         
         if doc:
             status_final = doc.get('status', 'Recebido / Em Triagem')
-            print(f"✅ ENCONTRADO em {colecao_da_empresa}!")
-            print(f"📊 Status: {status_final}")
+            # 🔥 NOVO: Pega o parecer do banco
+            parecer_final = doc.get('parecer_comite', 'Aguardando parecer...')
             
+            print(f"✅ Encontrado - Status: {status_final}, Parecer: {parecer_final}")
+            
+            # 🔥 Retorna STATUS e PARECER
             resp = make_response(jsonify({
                 "status": status_final,
+                "parecer": parecer_final,  # NOVO CAMPO
                 "colecao": colecao_da_empresa,
                 "empresa": empresa_pela_url
             }))
@@ -370,12 +358,8 @@ def consultar(prot):
             resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             resp.set_cookie('ultimo_protocolo', prot, max_age=60*60*24*7)
             return resp
-        else:
-            print(f"❌ Protocolo não encontrado em {colecao_da_empresa}")
-    else:
-        print(f"❌ Coleção {colecao_da_empresa} não existe!")
     
-    return jsonify({"status": "Não encontrado"}), 404
+    return jsonify({"status": "Não encontrado", "parecer": ""}), 404
 
 @app.route('/enviar', methods=['POST'])
 def enviar():
