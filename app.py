@@ -111,16 +111,16 @@ CONFIG_EMPRESAS = {
 # ✅ AJUSTE 1: Dicionário sem as portas (:8000) para bater com o host_limpo
 DOMINIOS_CLIENTES = {
     # --- DOMÍNIOS VERCEL ---
-    'uniao.codetecx.com': 'Uniao',
-    'sol-magico.codetecx.com': 'sol-magico',
-    'lua-nova.codetecx.com': 'lua-nova',
-    'sistema-escolas-template.vercel.app': 'sol-magico',
+    'uniao.codetecx.com': 'Uniao',              # 🔥 ANTES: estava 'sol-magico'? AGORA: 'Uniao'
+    'sol-magico.codetecx.com': 'sol-magico',    # ✅ OK
+    'lua-nova.codetecx.com': 'lua-nova',        # ✅ OK
+    'sistema-escolas-template.vercel.app': 'sol-magico',  # ✅ OK
 
-    # --- ACESSO LOCAL (Corrigido para bater com host_limpo) ---
-    'localhost': 'Uniao',
-    '127.0.0.1': 'Uniao',
+    # --- ACESSO LOCAL (para testes) ---
+    'localhost': 'sol-magico',      # Altere aqui para testar qual empresa
+    '127.0.0.1': 'sol-magico',      # Altere aqui para testar qual empresa
 
-    # --- DOMÍNIOS PRÓPRIOS (Futuro) ---
+    # --- DOMÍNIOS PRÓPRIOS ---
     'solmagico.com.br': 'sol-magico',
     'luanova.com.br': 'lua-nova',
     'uniaogestao.com.br': 'Uniao',
@@ -213,7 +213,7 @@ LICENCAS = {
     "uniao": "2026-12-24",
     "sol-magico": "2026-12-24",
     "lua-nova": "2026-12-24",
-    "do-re-mi": "2026-12-24" # Adicionei para garantir o dicionário completo
+    "do-re-mi": "2026-12-24"
 }
 
 def verificar_licenca(slug_empresa=None):
@@ -271,7 +271,6 @@ def home():
 
     # 2. Se não identificou o domínio, define um padrão ou nega
     if not empresa_slug:
-        # Opcional: definir 'Uniao' como padrão caso o domínio falhe
         empresa_slug = 'Uniao' 
 
     # 3. Agora verifica a licença passando o slug correto
@@ -320,24 +319,63 @@ def politica():
 
 @app.route('/consultar/<prot>')
 def consultar(prot):
-    if not verificar_licenca(): return "Indisponível", 403
-    for nome_col in db.list_collection_names():
-        if nome_col.startswith("denuncias_"):
-            d = db[nome_col].find_one({"protocolo": prot})
-            if d:
-                resp = make_response(jsonify({"status": d['status']}))
-                resp.set_cookie('ultimo_protocolo', prot, max_age=60*60*24*7) 
-                return resp
-    return jsonify({"status": "Nao encontrado"}), 404
+    # 🔥 PRIORIDADE 1: Verifica se veio de uma URL com empresa_slug
+    empresa_pela_url = None
+    
+    # Tenta pegar o referer para saber de qual página veio
+    referer = request.referrer or ""
+    
+    for slug in CONFIG_EMPRESAS.keys():
+        if f"/{slug}" in referer or f"/{slug.lower()}" in referer:
+            empresa_pela_url = slug
+            print(f"📍 Empresa identificada pelo referer: {empresa_pela_url}")
+            break
+    
+    # 🔥 PRIORIDADE 2: Se não achou pelo referer, usa o domínio
+    if not empresa_pela_url:
+        host_limpo = request.host.lower().strip().split(':')[0]
+        empresa_pela_url = DOMINIOS_CLIENTES.get(host_limpo, 'sol-magico')
+        print(f"🌐 Empresa identificada pelo domínio: {empresa_pela_url}")
+    
+    print(f"\n🔍 CONSULTA - Protocolo: {prot}")
+    print(f"🏢 Empresa alvo: {empresa_pela_url}")
+    
+    # Verifica licença
+    if not verificar_licenca(empresa_pela_url): 
+        return jsonify({"status": "Serviço Indisponível"}), 403
 
-#def verificar_licenca():
-    #try:
-        #data_limite = datetime.strptime(DATA_EXPIRACAO, '%Y-%m-%d')
-        #agora = datetime.now(FUSO_BR).replace(tzinfo=None)
-        #return agora <= data_limite
-   # except:
-       # return False
-
+    # Define a coleção baseada na empresa identificada
+    colecao_da_empresa = f'denuncias_{empresa_pela_url}'
+    print(f"📁 Buscando na coleção: {colecao_da_empresa}")
+    
+    # Lista coleções para debug
+    todas_colecoes = db.list_collection_names()
+    print(f"📚 Coleções disponíveis: {todas_colecoes}")
+    
+    # Busca APENAS na coleção da empresa correta
+    if colecao_da_empresa in todas_colecoes:
+        doc = db[colecao_da_empresa].find_one({"protocolo": prot})
+        
+        if doc:
+            status_final = doc.get('status', 'Recebido / Em Triagem')
+            print(f"✅ ENCONTRADO em {colecao_da_empresa}!")
+            print(f"📊 Status: {status_final}")
+            
+            resp = make_response(jsonify({
+                "status": status_final,
+                "colecao": colecao_da_empresa,
+                "empresa": empresa_pela_url
+            }))
+            
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            resp.set_cookie('ultimo_protocolo', prot, max_age=60*60*24*7)
+            return resp
+        else:
+            print(f"❌ Protocolo não encontrado em {colecao_da_empresa}")
+    else:
+        print(f"❌ Coleção {colecao_da_empresa} não existe!")
+    
+    return jsonify({"status": "Não encontrado"}), 404
 
 @app.route('/enviar', methods=['POST'])
 def enviar():
@@ -375,7 +413,8 @@ def enviar():
         resp = make_response(jsonify({"status": "sucesso", "protocolo": protocolo}))
         resp.set_cookie('ultimo_protocolo', protocolo, max_age=60*60*24*30)
         return resp
-    except Exception as e: return jsonify({"status": "erro", "msg": str(e)}), 500
+    except Exception as e: 
+        return jsonify({"status": "erro", "msg": str(e)}), 500
 
 # ==========================================
 # [GESTÃO E DASHBOARD]
@@ -383,7 +422,6 @@ def enviar():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    #
     if session.get('admin_logado'): 
         return redirect(url_for('dashboard'))
     
@@ -562,9 +600,9 @@ def area_segura(prot):
     else:
         id_seguro = email_banco
 
-    agora_agora = datetime.now().strftime('%d%m%Y%H%M%S%f')
+    # 🔥 CORRIGIDO: Usando FUSO_BR (horário de Brasília)
+    agora_agora = datetime.now(FUSO_BR).strftime('%d%m%Y%H%M%S%f')
     token_auth = hashlib.md5(f"{prot}{agora_agora}".encode()).hexdigest().upper()[:20]
-    
     midia_html = f"""<div class="container-midia"><div class="secao-titulo">Anexo Enviado</div><div class="caixa-imagem"><img src="{d['anexo']}" class="img-anexo"></div></div>""" if d.get('anexo') and d['anexo'] != "Nenhum" else ""
 
     conteudo_html = f"""
@@ -641,6 +679,6 @@ def area_segura(prot):
     """
     return make_response(conteudo_html)
 
-# ✅ AJUSTE 4: Simplificado para não causar erro de porta no Vercel
+# ✅ AJUSTE 4: Porta voltou para 8000
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=8000)

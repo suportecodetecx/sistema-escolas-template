@@ -717,32 +717,79 @@
         };
 
         // ==========================================
-        // 6. MODAL DE CONSULTA DE PROTOCOLO
+        // 6. MODAL DE CONSULTA DE PROTOCOLO - CORRIGIDO
         // ==========================================
         function abrirModalConsulta() { 
+            // 🔥 Limpa o modal antes de abrir
+            document.getElementById('inputProt').value = '';
+            document.getElementById('resultConsulta').classList.add('hidden');
+            document.getElementById('statusTxt').innerText = '';
+            
+            // Abre o modal
             document.getElementById('modalConsulta').style.display = 'flex'; 
+            
+            console.log("📂 Modal aberto e limpo");
         }
         
         function fecharModal() { 
-            document.getElementById('modalConsulta').style.display = 'none'; 
+            // Esconde o modal
+            document.getElementById('modalConsulta').style.display = 'none';
+            
+            // 🔥 LIMPA TUDO AO FECHAR
+            document.getElementById('inputProt').value = '';
+            document.getElementById('resultConsulta').classList.add('hidden');
+            document.getElementById('statusTxt').innerText = '';
+            
+            console.log("🧹 Modal fechado e limpo");
         }
 
         async function buscarProtocolo() {
             const prot = document.getElementById('inputProt').value.trim();
-            if (!prot) return;
-            
+            const resDiv = document.getElementById('resultConsulta');
+            const statusTxt = document.getElementById('statusTxt');
             const btn = document.getElementById('btnBusca');
+            
+            console.log("🔍 Buscando protocolo:", prot);
+            
+            if (!prot) {
+                alert("Digite um protocolo");
+                return;
+            }
+            
             btn.innerText = "...";
+            btn.disabled = true;
             
             try {
-                const res = await fetch('/consultar/' + prot);
+                // 🔥 Adiciona timestamp para evitar cache
+                const url = `/consultar/${prot}?_=${Date.now()}`;
+                console.log("📡 URL:", url);
+                
+                const res = await fetch(url, {
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                
                 const data = await res.json();
-                document.getElementById('resultConsulta').classList.remove('hidden');
-                document.getElementById('statusTxt').innerText = "STATUS: " + (data.status || "Não encontrado");
+                console.log("📦 Resposta:", data);
+                
+                resDiv.classList.remove('hidden');
+                
+                if (data.status && data.status !== "Não encontrado") {
+                    statusTxt.innerText = data.status;
+                    console.log("✅ Status exibido:", data.status);
+                } else {
+                    statusTxt.innerText = "Protocolo não encontrado";
+                    console.log("❌ Não encontrado");
+                }
+                
             } catch (err) { 
+                console.error("❌ Erro:", err);
                 alert("Erro ao buscar protocolo."); 
             } finally {
                 btn.innerText = "PESQUISAR";
+                btn.disabled = false;
             }
         }
 
