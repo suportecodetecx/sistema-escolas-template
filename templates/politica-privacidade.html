@@ -69,7 +69,7 @@
             z-index: -1;
         }
 
-        /* BOTÃO VOLTAR - Apple style - AJUSTADO PARA MOBILE */
+        /* BOTÃO VOLTAR - Apple style */
         .back-button {
             background: rgba(255,255,255,0.2);
             backdrop-filter: blur(10px);
@@ -97,7 +97,7 @@
             transform: scale(0.98);
         }
 
-        /* CONTAINER DO BOTÃO VOLTAR - AJUSTADO */
+        /* CONTAINER DO BOTÃO VOLTAR */
         .back-button-container {
             position: absolute;
             left: 1rem;
@@ -198,6 +198,73 @@
             text-align: center;
         }
 
+        /* STATUS DE COOKIE */
+        .cookie-status-box {
+            background: {{ estilo_site.primaria if estilo_site else '#2563eb' }}05;
+            border-radius: 1rem;
+            padding: 1rem;
+            margin: 1rem 0;
+            border: 1px solid {{ estilo_site.primaria if estilo_site else '#2563eb' }}10;
+        }
+
+        .status-aceito {
+            background-color: #10b981;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 100px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-nao-aceito {
+            background-color: #6b7280;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 100px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-cookie-demo {
+            background-color: var(--cor-primaria);
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 980px;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            box-shadow: 0 4px 12px {{ estilo_site.primaria if estilo_site else '#2563eb' }}30;
+            width: 100%;
+        }
+
+        .btn-cookie-demo:hover {
+            background-color: {{ estilo_site.primaria if estilo_site else '#1d4ed8' }};
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px {{ estilo_site.primaria if estilo_site else '#2563eb' }}40;
+        }
+
+        .btn-cookie-demo:active {
+            transform: scale(0.98);
+        }
+
+        .btn-cookie-demo:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         /* ANIMAÇÕES */
         .fade-up {
             animation: fadeUp 0.8s cubic-bezier(0.2, 0, 0, 1) forwards;
@@ -223,99 +290,28 @@
 
         /* RESPONSIVIDADE REFORÇADA */
         @media (max-width: 480px) {
-            body {
-                padding: 0.25rem;
-            }
-            
-            .header-gradient {
-                padding: 2rem 0.75rem 1.5rem 0.75rem;
-            }
-            
-            .back-button-container {
-                left: 0.75rem;
-                top: 0.75rem;
-            }
-            
-            .back-button {
-                padding: 0.4rem 0.8rem;
-                font-size: 0.7rem;
-            }
-            
-            .title-premium {
-                margin-top: 2rem;
-                font-size: 1.5rem;
-            }
-            
-            .date-badge {
-                font-size: 0.7rem;
-                padding: 0.3rem 0.8rem;
-            }
-            
-            .p-8 {
-                padding: 1.25rem !important;
-            }
-            
-            .section-title {
-                font-size: 1.1rem;
-                margin: 1.25rem 0 0.5rem 0;
-            }
-            
-            .text-premium {
-                font-size: 0.875rem;
-                line-height: 1.5;
-            }
-            
-            .list-premium li {
-                font-size: 0.875rem;
-                padding: 0.4rem 0 0.4rem 1.6rem;
-                background-position: 0 0.6rem;
-            }
-            
-            .highlight-box {
-                padding: 1rem;
-                margin: 1.25rem 0;
-            }
-            
-            .footer-premium {
-                margin-top: 1.5rem;
-                padding: 1rem 0 0;
-            }
-            
-            .footer-premium .flex {
-                gap: 0.75rem;
-            }
-            
-            .footer-premium img {
-                width: 1.25rem;
-                height: 1.25rem;
-            }
-            
-            .footer-premium .text-sm {
-                font-size: 0.75rem;
-            }
-            
-            .footer-premium .text-xs {
-                font-size: 0.7rem;
-            }
+            body { padding: 0.25rem; }
+            .header-gradient { padding: 2rem 0.75rem 1.5rem 0.75rem; }
+            .back-button-container { left: 0.75rem; top: 0.75rem; }
+            .back-button { padding: 0.4rem 0.8rem; font-size: 0.7rem; }
+            .title-premium { margin-top: 2rem; font-size: 1.5rem; }
+            .date-badge { font-size: 0.7rem; padding: 0.3rem 0.8rem; }
+            .p-8 { padding: 1.25rem !important; }
+            .section-title { font-size: 1.1rem; margin: 1.25rem 0 0.5rem 0; }
+            .text-premium { font-size: 0.875rem; line-height: 1.5; }
+            .list-premium li { font-size: 0.875rem; padding: 0.4rem 0 0.4rem 1.6rem; }
+            .highlight-box { padding: 1rem; margin: 1.25rem 0; }
+            .footer-premium { margin-top: 1.5rem; padding: 1rem 0 0; }
+            .footer-premium img { width: 1.25rem; height: 1.25rem; }
+            .footer-premium .text-sm { font-size: 0.75rem; }
+            .footer-premium .text-xs { font-size: 0.7rem; }
         }
 
-        /* Ajuste para telas muito pequenas */
         @media (max-width: 360px) {
-            .title-premium {
-                font-size: 1.3rem;
-            }
-            
-            .date-badge svg {
-                display: none;
-            }
-            
-            .back-button span:not(.sm\\:hidden) {
-                display: none;
-            }
-            
-            .back-button .sm\\:hidden {
-                display: inline !important;
-            }
+            .title-premium { font-size: 1.3rem; }
+            .date-badge svg { display: none; }
+            .back-button span:not(.sm\\:hidden) { display: none; }
+            .back-button .sm\\:hidden { display: inline !important; }
         }
     </style>
 </head>
@@ -327,7 +323,7 @@
             <!-- HEADER PREMIUM -->
             <div class="header-gradient text-center relative">
                 
-                <!-- BOTÃO VOLTAR - Container ajustado -->
+                <!-- BOTÃO VOLTAR -->
                 <div class="back-button-container">
                     <a href="/" class="back-button group">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -375,43 +371,93 @@
                     <strong class="font-semibold" style="color: var(--cor-primaria);">{{ empresa_site.nome if empresa_site else 'Instituição' }}</strong>, 
                     informando seus direitos de privacidade e como a lei o protege.
                 </p>
-
-                <h2 class="section-title">2. Utilização de Cookies</h2>
                 <p class="text-premium">
-                    Este portal utiliza tecnologias de armazenamento local para finalidades técnicas e de segurança:
+                    Este canal não se destina a crianças e não coletamos intencionalmente dados relacionados a menores de idade. É importante que você leia esta política para estar plenamente ciente de como e por que usamos seus dados para garantir a integridade da instituição.
                 </p>
+
+                <h2 class="section-title">2. Dados do controlador e de contato</h2>
+                <p class="text-premium">
+                    A <strong class="font-semibold" style="color: var(--cor-primaria);">Codetecx</strong> é a responsável técnica e operadora dos Dados Pessoais enviados. Nomeamos um encarregado de proteção de dados (DPO) para supervisionar a segurança destas informações. 
+                </p>
+                <p class="text-premium">
+                    Se você tiver alguma dúvida ou desejar exercer seus direitos legais, entre em contato com nosso DPO pelo e-mail: <span class="font-semibold" style="color: var(--cor-primaria);">canaldenuncia@codetecx.com</span>
+                </p>
+
+                <!-- SEÇÃO DE COOKIES COMPLETA -->
+                <h2 class="section-title">3. Política de Cookies e Consentimento</h2>
+                <p class="text-premium">
+                    Este portal utiliza tecnologias de armazenamento local (cookies e localStorage) para finalidades estritamente técnicas e de segurança, conforme a LGPD (Lei Geral de Proteção de Dados).
+                </p>
+                
+                <div class="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+                    <h3 class="font-bold text-sm mb-2" style="color: var(--cor-primaria);">📌 O que armazenamos:</h3>
+                    <ul class="list-premium mb-2">
+                        <li><strong>Protocolo de Acompanhamento:</strong> Armazenamos seu último protocolo para consulta rápida.</li>
+                        <li><strong>Segurança da Sessão:</strong> Identificadores temporários para prevenção de SPAM.</li>
+                        <li><strong>Preferências de Consentimento:</strong> Registramos sua aceitação ao banner de privacidade.</li>
+                    </ul>
+                </div>
+
+                <!-- STATUS DO COOKIE (COMPARTILHADO COM O MODAL) -->
+                <div class="cookie-status-box">
+                    <h3 class="font-bold text-sm mb-3" style="color: var(--cor-primaria);">🔘 Status do Consentimento</h3>
+                    
+                    <div class="flex flex-col items-center gap-4">
+                        <!-- STATUS ATUAL -->
+                        <div id="cookieStatusDisplay" class="w-full">
+                            <!-- Será preenchido pelo JavaScript -->
+                        </div>
+
+                        <!-- EXPLICAÇÃO -->
+                        <p class="text-sm text-gray-600 text-center">
+                            Este status é compartilhado com o banner de cookies. Se você aceitou no modal, já aparece como aceito aqui.
+                        </p>
+
+                        <!-- BOTÃO PARA TESTE (OPCIONAL) -->
+                        <button onclick="aceitarCookiesDemo()" id="btnAceitar" class="btn-cookie-demo">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Aceitar Cookies
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-100">
+                    <h3 class="font-bold text-sm mb-2" style="color: var(--cor-primaria);">⚙️ Como gerenciar ou revogar seu consentimento</h3>
+                    <p class="text-premium mb-2">
+                        Você pode limpar os dados de navegação do seu navegador a qualquer momento para remover as preferências salvas. Após limpar o cache e o localStorage, o banner de cookies será exibido novamente na próxima visita.
+                    </p>
+                    <p class="text-premium">
+                        <span class="font-bold">Importante:</span> O botão de aceite no modal principal e este botão na política compartilham a mesma preferência.
+                    </p>
+                </div>
+
+                <h2 class="section-title">4. Tipos de dados que coletamos</h2>
+                <p class="text-premium">
+                    Coletamos Dados Pessoais quando você interage com o canal de denúncias ou solicita suporte técnico. 
+                    <span class="font-semibold">Dados Pessoais</span> referem-se a informações que podem identificá-lo (caso você escolha se identificar), como nome, e-mail, cargo e endereço IP.
+                </p>
+                <p class="text-premium">
+                    <span class="font-semibold" style="color: var(--cor-primaria);">Importante:</span> Não coletamos Categorias Especiais de Dados (origem racial, convicções religiosas, dados genéticos) a menos que você os forneça voluntariamente como parte do seu relato para fins de investigação de integridade.
+                </p>
+
+                <h2 class="section-title">5. Utilização dos seus dados</h2>
+                <p class="text-premium">Os dados coletados são utilizados exclusivamente para:</p>
                 <ul class="list-premium">
-                    <li><strong>Protocolo:</strong> Armazenamos seu último protocolo para consulta rápida.</li>
-                    <li><strong>Segurança:</strong> Identificadores temporários para prevenção de SPAM.</li>
-                    <li><strong>Consentimento:</strong> Registramos sua aceitação ao banner de privacidade.</li>
-                </ul>
-                <p class="text-premium">
-                    <span class="font-semibold" style="color: var(--cor-primaria);">Nota:</span> Não usamos cookies para publicidade.
-                </p>
-
-                <h2 class="section-title">3. Dados coletados</h2>
-                <p class="text-premium">
-                    Coletamos Dados Pessoais quando você interage com o canal. 
-                    <span class="font-semibold">Dados Pessoais</span> incluem nome, e-mail e cargo (se identificado). 
-                    Coletamos automaticamente IP e metadados para segurança.
-                </p>
-
-                <h2 class="section-title">4. Uso dos dados</h2>
-                <p class="text-premium">Os dados são utilizados para:</p>
-                <ul class="list-premium">
-                    <li>Processar e investigar relatos;</li>
-                    <li>Permitir acompanhamento por protocolo;</li>
-                    <li>Gerar estatísticas anônimas;</li>
+                    <li>Processar e investigar relatos de má conduta;</li>
+                    <li>Permitir o acompanhamento do status do relato através do seu protocolo;</li>
+                    <li>Gerar estatísticas anônimas de conformidade para a <strong class="font-semibold" style="color: var(--cor-primaria);">{{ empresa_site.nome if empresa_site else 'Instituição' }}</strong>;</li>
                     <li>Cumprir obrigações legais (Lei 14.457/22 e LGPD).</li>
                 </ul>
 
-                <h2 class="section-title">5. Direitos do Titular</h2>
+                <h2 class="section-title">6. Direitos do Titular</h2>
                 <p class="text-premium">
                     Conforme a LGPD, você tem direito a acessar, corrigir ou solicitar exclusão dos seus dados. 
                     Para relatos anônimos, é necessário o protocolo gerado.
                 </p>
 
-                <!-- FOOTER PREMIUM -->
+                <!-- FOOTER PREMIUM CODETECX -->
                 <div class="footer-premium">
                     <div class="flex flex-col items-center justify-center gap-3">
                         
@@ -446,6 +492,93 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // ==========================================
+        // FUNÇÃO PARA ATUALIZAR O STATUS DO COOKIE
+        // ==========================================
+        function atualizarStatusCookie() {
+            const display = document.getElementById('cookieStatusDisplay');
+            const btnAceitar = document.getElementById('btnAceitar');
+            const aceito = localStorage.getItem('cookiesAceitos') === 'true';
+            
+            if (aceito) {
+                // Status ACEITO
+                display.innerHTML = `
+                    <div class="status-aceito mx-auto w-fit">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Cookies ACEITOS ✓</span>
+                    </div>
+                `;
+                // Se já aceitou, desabilita o botão
+                if (btnAceitar) {
+                    btnAceitar.disabled = true;
+                    btnAceitar.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Cookies já aceitos
+                    `;
+                }
+            } else {
+                // Status NÃO ACEITO
+                display.innerHTML = `
+                    <div class="status-nao-aceito mx-auto w-fit">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                        </svg>
+                        <span>Cookies NÃO aceitos ✗</span>
+                    </div>
+                `;
+                // Se não aceitou, habilita o botão
+                if (btnAceitar) {
+                    btnAceitar.disabled = false;
+                    btnAceitar.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Aceitar Cookies
+                    `;
+                }
+            }
+        }
+
+        // ==========================================
+        // FUNÇÃO PARA ACEITAR COOKIES
+        // ==========================================
+        function aceitarCookiesDemo() {
+            // Salva no localStorage (igual ao modal faz)
+            localStorage.setItem('cookiesAceitos', 'true');
+            
+            // Atualiza o status na tela
+            atualizarStatusCookie();
+            
+            // Feedback visual
+            const btn = document.getElementById('btnAceitar');
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Aceito!';
+            
+            setTimeout(() => {
+                atualizarStatusCookie(); // Já vai mostrar o botão desabilitado
+            }, 500);
+        }
+
+        // ==========================================
+        // INICIALIZAÇÃO
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            atualizarStatusCookie();
+            
+            // Verifica se alguém aceitou em outra aba (opcional)
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'cookiesAceitos') {
+                    atualizarStatusCookie();
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>
