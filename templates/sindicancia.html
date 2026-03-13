@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODETECX | Procedimento de Sindicância</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Fonte Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --purple: #8b5cf6;
+            --purple-dark: #7c3aed;
+            --slate-bg: #f8fafc;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--slate-bg);
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        /* Scroll customizado */
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        /* Estilos para diligência */
+        .diligencia-item {
+            border-left: 4px solid var(--primary);
+            transition: all 0.2s ease;
+        }
+
+        .diligencia-item:hover {
+            background: #f8fafc;
+            transform: translateX(4px);
+        }
+
+        /* Badge de status */
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-em_andamento {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-concluida {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        /* Cards de membros */
+        .membro-card {
+            transition: all 0.2s ease;
+        }
+
+        .membro-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.2);
+        }
+
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        /* Estilo para campos editáveis */
+        .campo-editavel {
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .campo-editavel:hover {
+            border-color: #cbd5e1;
+            background-color: #f8fafc;
+        }
+
+        .campo-editavel:focus {
+            border-color: var(--primary);
+            background-color: white;
+            outline: none;
+        }
+
+        .campo-disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            background-color: #f1f5f9;
+        }
+
+        /* Modal customizado */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            z-index: 10000;
+        }
+
+        /* Toast de notificação */
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            padding: 16px 24px;
+            z-index: 10001;
+            animation: slideInRight 0.3s ease-out;
+            max-width: 350px;
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast-success { border-left-color: #10b981; }
+        .toast-error { border-left-color: #ef4444; }
+        .toast-warning { border-left-color: #f59e0b; }
+        .toast-info { border-left-color: #3b82f6; }
+
+        /* Modal de confirmação profissional */
+        .confirm-modal {
+            max-width: 500px;
+            width: 90%;
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+        }
+
+        .confirm-header {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .confirm-header i {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+        }
+
+        .confirm-body {
+            padding: 24px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .confirm-footer {
+            padding: 16px 24px;
+            background: #f8fafc;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .btn-confirm {
+            background: #dc2626;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-confirm:hover {
+            background: #b91c1c;
+            transform: scale(1.02);
+        }
+
+        .btn-cancel {
+            background: white;
+            color: #475569;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 14px;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-cancel:hover {
+            background: #f1f5f9;
+        }
+
+        /* Alerta legal */
+        .legal-alert {
+            background: #fef2f2;
+            border-left: 4px solid #dc2626;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+            font-size: 13px;
+        }
+
+        .legal-alert strong {
+            color: #991b1b;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .legal-alert p {
+            color: #7f1d1d;
+            margin: 4px 0;
+        }
+
+        /* Estilo para anexos */
+        .anexo-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            background: #f8fafc;
+            transition: all 0.2s;
+        }
+
+        .anexo-card:hover {
+            background: white;
+            border-color: var(--primary);
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 11px;
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Estilo para link de anexo */
+        .anexo-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #f3f4f6;
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: #4b5563;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: 1px solid #e5e7eb;
+            text-decoration: none;
+        }
+
+        .anexo-link:hover {
+            background-color: #e5e7eb;
+            color: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-20">
+
+    <!-- CSRF Token oculto -->
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <!-- NAVBAR - NUNCA É BLOQUEADA -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm w-full">
+        <div class="max-w-full mx-auto px-8 py-4 flex justify-between items-center">
+            
+            <!-- Logo e Título -->
+            <div class="flex items-center gap-4">
+                <div class="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-200">
+                    <i data-lucide="scale" class="w-6 h-6"></i>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-extrabold text-xl tracking-tighter uppercase italic text-slate-700 leading-none">
+                        <span class="text-blue-600">SINDICÂNCIA</span>
+                        <span class="text-slate-400 font-light"> | Procedimento Investigativo</span>
+                    </span>
+                    <span class="text-[10px] font-bold text-slate-400 tracking-widest uppercase mt-1">
+                        Protocolo: <span id="protocoloDisplay" class="text-blue-600">{{ denuncia.protocolo if denuncia else '---' }}</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Botões de Ação (NUNCA SÃO BLOQUEADOS) -->
+            <div class="flex items-center gap-3">
+                <button onclick="window.location.href='/dashboard'" id="btnVoltarDashboard"
+                    class="group bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm">
+                    <i data-lucide="arrow-left" class="w-4 h-4 text-slate-400 group-hover:text-blue-600"></i> 
+                    VOLTAR AO DASHBOARD
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="max-w-7xl mx-auto px-6 py-8">
+
+        <!-- STATUS BANNER -->
+        <div class="mb-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600">
+                    <i data-lucide="info" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black text-slate-800">Procedimento de Sindicância</h1>
+                    <p class="text-sm text-slate-500">Protocolo de origem: <span id="protocoloOrigem" class="font-bold text-blue-600">{{ denuncia.protocolo if denuncia else '---' }}</span></p>
+                </div>
+            </div>
+            <div>
+                <span id="statusBadge" class="status-badge status-em_andamento">EM ANDAMENTO</span>
+            </div>
+        </div>
+
+        <!-- Debug info - remover em produção -->
+        {% if denuncia %}
+        <script>
+            console.log('Protocolo da denúncia:', '{{ denuncia.protocolo }}');
+            console.log('Anexo da denúncia:', '{{ denuncia.anexo }}');
+        </script>
+        {% endif %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- COLUNA 1: COMISSÃO E INFORMAÇÕES -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Card: Informações Gerais -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                        INFORMAÇÕES GERAIS
+                    </h3>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Data de Instauração</p>
+                            <p id="dataInstauracao" class="text-sm font-bold text-slate-800 campo-editavel p-2 -ml-2 rounded" onclick="editarDataInstauracao()">{{ denuncia.data if denuncia else 'Clique para editar' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Instaurado por</p>
+                            <p id="instauradoPor" class="text-sm font-bold text-slate-800 campo-editavel p-2 -ml-2 rounded" onclick="editarInstauradoPor()">{{ session.get('admin_nome', 'Admin') }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Prazo Legal</p>
+                            <p id="prazoLegal" class="text-sm font-bold text-slate-800 campo-editavel p-2 -ml-2 rounded" onclick="editarPrazoLegal()">Clique para definir</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Denúncia Original</p>
+                            <p class="text-sm text-slate-600 mt-1 p-2 bg-slate-50 rounded-xl">{{ denuncia.relato if denuncia else '---' }}</p>
+                        </div>
+                        
+                        <!-- Link para anexo da denúncia original -->
+                        {% if denuncia and denuncia.anexo and denuncia.anexo != 'None' and denuncia.anexo != 'Nenhum' %}
+                        <div class="mt-4">
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-2">Documento Anexado</p>
+                            <a href="/anexo/{{ denuncia.protocolo }}" target="_blank" class="anexo-link">
+                                <i data-lucide="paperclip" class="w-4 h-4"></i>
+                                <span>Visualizar anexo da denúncia</span>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Card: Comissão de Sindicância -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <i data-lucide="users" class="w-4 h-4"></i>
+                            COMISSÃO
+                        </h3>
+                        <button id="btnAdicionarMembro" onclick="mostrarFormMembro()" class="text-blue-600 hover:text-blue-800 text-xs font-bold flex items-center gap-1">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i> ADICIONAR
+                        </button>
+                    </div>
+
+                    <!-- Lista de Membros -->
+                    <div id="listaMembros" class="space-y-3 mb-4">
+                        <!-- Os membros serão inseridos aqui via JavaScript -->
+                        <div class="text-center text-slate-400 text-sm py-4">
+                            Nenhum membro designado. Clique em "ADICIONAR" para começar.
+                        </div>
+                    </div>
+
+                    <!-- Formulário para adicionar membro (inicialmente oculto) -->
+                    <div id="formMembro" class="hidden mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <input type="text" id="membroNome" placeholder="Nome completo" 
+                               class="w-full p-3 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <select id="membroFuncao" class="w-full p-3 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="Presidente">Presidente</option>
+                            <option value="Membro">Membro</option>
+                            <option value="Secretário">Secretário</option>
+                        </select>
+                        <div class="flex gap-2">
+                            <button onclick="adicionarMembro()" class="flex-1 bg-blue-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-blue-700">SALVAR</button>
+                            <button onclick="cancelarFormMembro()" class="flex-1 bg-slate-200 text-slate-600 py-2 rounded-xl text-xs font-bold hover:bg-slate-300">CANCELAR</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUNA 2: DILIGÊNCIAS E PROVAS -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Card: Diligências Realizadas -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                            DILIGÊNCIAS REALIZADAS
+                        </h3>
+                        <button id="btnAdicionarDiligencia" onclick="mostrarFormDiligencia()" class="text-blue-600 hover:text-blue-800 text-xs font-bold flex items-center gap-1">
+                            <i data-lucide="plus-circle" class="w-4 h-4"></i> NOVA DILIGÊNCIA
+                        </button>
+                    </div>
+
+                    <!-- Lista de Diligências -->
+                    <div id="listaDiligencias" class="space-y-3 max-h-96 overflow-y-auto custom-scroll pr-2">
+                        <!-- As diligências serão inseridas aqui via JavaScript -->
+                        <div class="text-center text-slate-400 text-sm py-8">
+                            Nenhuma diligência registrada. Clique em "NOVA DILIGÊNCIA" para começar.
+                        </div>
+                    </div>
+
+                    <!-- Formulário para nova diligência (inicialmente oculto) -->
+                    <div id="formDiligencia" class="hidden mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <input type="date" id="diligenciaData" class="w-full p-3 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="text" id="diligenciaTitulo" placeholder="Título da diligência" 
+                               class="w-full p-3 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <textarea id="diligenciaDescricao" rows="3" placeholder="Descrição detalhada..." 
+                                  class="w-full p-3 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
+                        <div class="flex gap-2">
+                            <button onclick="salvarDiligencia()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-700">REGISTRAR DILIGÊNCIA</button>
+                            <button onclick="cancelarFormDiligencia()" class="flex-1 bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold hover:bg-slate-300">CANCELAR</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Provas e Documentos -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <i data-lucide="file-text" class="w-4 h-4"></i>
+                            PROVAS E DOCUMENTOS
+                        </h3>
+                        <button id="btnAdicionarProva" onclick="mostrarFormProva()" class="text-blue-600 hover:text-blue-800 text-xs font-bold flex items-center gap-1">
+                            <i data-lucide="upload" class="w-4 h-4"></i> ANEXAR PROVA
+                        </button>
+                    </div>
+
+                    <!-- Lista de Provas -->
+                    <div id="listaProvas" class="space-y-3 max-h-60 overflow-y-auto custom-scroll pr-2 mb-4">
+                        <!-- As provas serão inseridas aqui via JavaScript -->
+                        <div class="text-center text-slate-400 text-sm py-4">
+                            Nenhuma prova anexada. Clique em "ANEXAR PROVA" para adicionar.
+                        </div>
+                    </div>
+
+                    <!-- Formulário para nova prova -->
+                    <div id="formProva" class="hidden mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <input type="file" id="provaArquivo" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" 
+                               class="w-full p-3 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="text" id="provaDescricao" placeholder="Descrição da prova (ex: Contrato, E-mail, Foto...)" 
+                               class="w-full p-3 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <select id="provaTipo" class="w-full p-3 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="documento">Documento</option>
+                            <option value="imagem">Imagem/Foto</option>
+                            <option value="email">E-mail</option>
+                            <option value="contrato">Contrato</option>
+                            <option value="depoimento">Depoimento</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                        <div class="flex gap-2">
+                            <button onclick="salvarProva()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-700">ANEXAR PROVA</button>
+                            <button onclick="cancelarFormProva()" class="flex-1 bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold hover:bg-slate-300">CANCELAR</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Relatório Final -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                        RELATÓRIO FINAL
+                    </h3>
+
+                    <textarea id="relatorioFinal" rows="6" 
+                              placeholder="Elabore aqui o relatório final da sindicância, descrevendo todas as apurações, análises de provas, depoimentos e a conclusão da comissão..."
+                              class="w-full p-4 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
+
+                    <!-- Tipos de Sindicância e Conclusão Detalhada -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block flex items-center gap-1">
+                                <i data-lucide="scale" class="w-3 h-3"></i>
+                                TIPO DE SINDICÂNCIA
+                            </label>
+                            <select id="tipoSindicancia" class="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="investigativa">Investigativa (SINVE) - Autoria desconhecida</option>
+                                <option value="punitiva">Acusatória/Punitiva (SINAC) - Autor identificado</option>
+                                <option value="patrimonial">Patrimonial (SINPA) - Enriquecimento ilícito</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block flex items-center gap-1">
+                                <i data-lucide="gavel" class="w-3 h-3"></i>
+                                CONCLUSÃO / DECISÃO
+                            </label>
+                            <select id="conclusao" class="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">Selecione a conclusão...</option>
+                                <optgroup label="ARQUIVAMENTO">
+                                    <option value="arquivar_improcedente">Arquivar por improcedência (sem culpa)</option>
+                                    <option value="arquivar_autoria">Arquivar por não identificação de autoria</option>
+                                    <option value="arquivar_prescricao">Arquivar por prescrição</option>
+                                </optgroup>
+                                <optgroup label="PENALIDADES LEVES">
+                                    <option value="advertencia">Advertência (Art. 129 da Lei 8.112/90)</option>
+                                    <option value="suspensao_10">Suspensão - até 10 dias</option>
+                                    <option value="suspensao_20">Suspensão - 11 a 20 dias</option>
+                                    <option value="suspensao_30">Suspensão - 21 a 30 dias</option>
+                                </optgroup>
+                                <optgroup label="PROCEDIMENTOS POSTERIORES">
+                                    <option value="pad">Instaurar Processo Administrativo Disciplinar (PAD)</option>
+                                    <option value="sindicancia_patrimonial">Converter em Sindicância Patrimonial</option>
+                                    <option value="encaminhamento_mp">Encaminhar ao Ministério Público</option>
+                                    <option value="encaminhamento_tc">Encaminhar ao Tribunal de Contas</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Data da Conclusão</label>
+                            <input type="date" id="dataConclusao" class="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase mb-1 block">Prazo Final (prorrogação)</label>
+                            <input type="date" id="prazoFinal" class="w-full p-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTÕES DE AÇÃO FINAL -->
+        <div class="mt-8 flex justify-end gap-4">
+            <!-- BOTÃO GERAR PDF - NUNCA É BLOQUEADO -->
+            <button onclick="gerarPDF()" id="btnGerarPDF"
+                    class="bg-white border border-slate-200 text-slate-600 px-8 py-4 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+                <i data-lucide="file-pdf" class="w-4 h-4"></i>
+                GERAR PDF
+            </button>
+            
+            <!-- BOTÃO SALVAR RASCUNHO - DESAPARECE APÓS FINALIZAÇÃO -->
+            <button id="btnSalvarRascunho" onclick="salvarRascunho()" 
+                    class="bg-white border border-slate-200 text-slate-600 px-8 py-4 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                SALVAR RASCUNHO
+            </button>
+            
+            <!-- BOTÃO FINALIZAR - DESAPARECE APÓS FINALIZAÇÃO -->
+            <button id="btnFinalizar" onclick="mostrarModalConfirmacao()" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-200 flex items-center gap-2">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                FINALIZAR SINDICÂNCIA
+            </button>
+        </div>
+    </main>
+
+    <!-- OVERLAY DE CARREGAMENTO -->
+    <div id="loadingOverlay" class="modal-overlay" style="z-index: 10002;">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center">
+            <div class="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-slate-600 font-bold">Processando...</p>
+        </div>
+    </div>
+
+    <!-- TOAST DE NOTIFICAÇÃO -->
+    <div id="toast" class="toast-notification hidden">
+        <div class="flex items-center gap-3">
+            <div id="toastIcon" class="w-6 h-6"></div>
+            <div>
+                <p id="toastTitle" class="font-bold text-sm"></p>
+                <p id="toastMessage" class="text-xs text-slate-500"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMAÇÃO PROFISSIONAL PARA FINALIZAÇÃO -->
+    <div id="modalConfirmacao" class="modal-overlay">
+        <div class="confirm-modal">
+            <div class="confirm-header">
+                <i data-lucide="scale" class="w-12 h-12 mx-auto"></i>
+                <h2 class="text-xl font-bold">FINALIZAR PROCESSO</h2>
+                <p class="text-sm opacity-90">Procedimento de Sindicância</p>
+            </div>
+            <div class="confirm-body">
+                <div class="text-center mb-4">
+                    <span class="text-6xl mb-4 block">⚖️</span>
+                    <h3 class="text-lg font-bold text-slate-800 mb-2">Confirmação de Encerramento</h3>
+                    <p class="text-sm text-slate-600 mb-4">
+                        Protocolo: <strong id="confirmProtocolo">{{ denuncia.protocolo if denuncia else '' }}</strong>
+                    </p>
+                </div>
+                
+                <!-- ALERTA LEGAL -->
+                <div class="legal-alert">
+                    <strong>⚠️ FUNDAMENTAÇÃO LEGAL</strong>
+                    <p>Art. 148 da Lei 8.112/90 - O processo disciplinar será concluído no prazo de 60 (sessenta) dias, contados da data de publicação do ato que constituir a comissão, admitida a prorrogação por igual prazo, quando as circunstâncias o exigirem.</p>
+                    <p class="mt-2"><strong>Efeitos da Finalização:</strong></p>
+                    <p>• O processo será arquivado e NÃO PODERÁ SER REABERTO</p>
+                    <p>• Todas as diligências serão encerradas</p>
+                    <p>• O relatório final se tornará definitivo</p>
+                    <p>• As decisões serão encaminhadas para cumprimento</p>
+                    <p>• Nenhuma edição será permitida após a finalização</p>
+                </div>
+                
+                <div class="bg-amber-50 p-4 rounded-xl text-sm text-amber-800 mt-4">
+                    <p class="font-bold mb-2">📋 CHECKLIST LEGAL OBRIGATÓRIO:</p>
+                    <ul class="space-y-2 list-disc pl-5">
+                        <li class="flex items-start gap-2">
+                            <input type="checkbox" id="check1" class="mt-1">
+                            <span>Todas as diligências necessárias foram realizadas?</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <input type="checkbox" id="check2" class="mt-1">
+                            <span>O relatório final está completo e fundamentado?</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <input type="checkbox" id="check3" class="mt-1">
+                            <span>A conclusão está claramente definida?</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <input type="checkbox" id="check4" class="mt-1">
+                            <span>Todos os membros da comissão estão de acordo?</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <input type="checkbox" id="check5" class="mt-1">
+                            <span>As provas foram devidamente anexadas?</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <p class="text-xs text-red-600 font-bold mt-4 text-center">
+                    ⚠️ Esta ação é IRREVERSÍVEL. Após confirmada, nenhuma alteração será possível.
+                </p>
+            </div>
+            <div class="confirm-footer">
+                <button onclick="fecharModalConfirmacao()" class="btn-cancel">
+                    REVISAR PROCESSO
+                </button>
+                <button onclick="finalizarSindicancia()" class="btn-confirm" id="btnConfirmarFinalizacao">
+                    SIM, FINALIZAR SINDICÂNCIA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAIS DE EDIÇÃO -->
+    <div id="modalDataInstauracao" class="modal-overlay">
+        <div class="bg-white rounded-2xl max-w-md w-full mx-4 modal-content">
+            <div class="p-6 border-b border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800">Editar Data de Instauração</h3>
+            </div>
+            <div class="p-6">
+                <input type="date" id="editDataInstauracao" class="w-full p-3 border border-slate-200 rounded-xl">
+            </div>
+            <div class="p-6 border-t border-slate-200 flex justify-end gap-3">
+                <button onclick="fecharModal('modalDataInstauracao')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button onclick="salvarDataInstauracao()" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalInstauradoPor" class="modal-overlay">
+        <div class="bg-white rounded-2xl max-w-md w-full mx-4 modal-content">
+            <div class="p-6 border-b border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800">Editar Responsável</h3>
+            </div>
+            <div class="p-6">
+                <input type="text" id="editInstauradoPor" class="w-full p-3 border border-slate-200 rounded-xl" placeholder="Nome do responsável">
+            </div>
+            <div class="p-6 border-t border-slate-200 flex justify-end gap-3">
+                <button onclick="fecharModal('modalInstauradoPor')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button onclick="salvarInstauradoPor()" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalPrazoLegal" class="modal-overlay">
+        <div class="bg-white rounded-2xl max-w-md w-full mx-4 modal-content">
+            <div class="p-6 border-b border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800">Editar Prazo Legal</h3>
+            </div>
+            <div class="p-6">
+                <input type="date" id="editPrazoLegal" class="w-full p-3 border border-slate-200 rounded-xl">
+            </div>
+            <div class="p-6 border-t border-slate-200 flex justify-end gap-3">
+                <button onclick="fecharModal('modalPrazoLegal')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button onclick="salvarPrazoLegal()" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // INICIALIZAÇÃO
+        // ==========================================
+        let protocoloAtual = '{{ denuncia.protocolo if denuncia else "" }}';
+        let csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+        let processoFinalizado = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            
+            if (protocoloAtual) {
+                document.getElementById('protocoloDisplay').innerText = protocoloAtual;
+                document.getElementById('protocoloOrigem').innerText = protocoloAtual;
+                carregarSindicancia(protocoloAtual);
+            }
+            
+            // Preenche data atual nos campos de data
+            const hoje = new Date().toISOString().split('T')[0];
+            const dataField = document.getElementById('diligenciaData');
+            const prazoField = document.getElementById('prazoFinal');
+            const dataConclusao = document.getElementById('dataConclusao');
+            
+            if (dataField) dataField.value = hoje;
+            if (dataConclusao) dataConclusao.value = hoje;
+            
+            // Calcula prazo de 30 dias
+            const prazo = new Date();
+            prazo.setDate(prazo.getDate() + 30);
+            if (prazoField) prazoField.value = prazo.toISOString().split('T')[0];
+        });
+
+        // ==========================================
+        // FUNÇÕES DE BLOQUEIO PÓS-FINALIZAÇÃO
+        // ==========================================
+        function bloquearCampos() {
+            processoFinalizado = true;
+            
+            // Lista de IDs que NÃO devem ser bloqueados
+            const idsNuncaBloquear = ['btnGerarPDF', 'btnVoltarDashboard'];
+            
+            // IDs dos botões de adição que devem sumir
+            const botoesAdicionar = ['btnAdicionarMembro', 'btnAdicionarDiligencia', 'btnAdicionarProva'];
+            
+            // IDs dos botões de ação que devem sumir
+            const botoesAcao = ['btnSalvarRascunho', 'btnFinalizar'];
+            
+            // Esconde botões de adição
+            botoesAdicionar.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.style.display = 'none';
+            });
+            
+            // Esconde botões de ação
+            botoesAcao.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.style.display = 'none';
+            });
+            
+            // Desabilita campos de entrada
+            document.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach(el => {
+                if (!idsNuncaBloquear.includes(el.id)) {
+                    el.disabled = true;
+                    el.classList.add('campo-disabled');
+                }
+            });
+            
+            // Desabilita botões de ação (exceto os permitidos)
+            document.querySelectorAll('main button[onclick]').forEach(el => {
+                if (!idsNuncaBloquear.includes(el.id)) {
+                    el.setAttribute('data-onclick', el.getAttribute('onclick'));
+                    el.removeAttribute('onclick');
+                    el.classList.add('campo-disabled');
+                    el.style.cursor = 'not-allowed';
+                }
+            });
+            
+            // Remove eventos de clique dos campos editáveis
+            document.querySelectorAll('main .campo-editavel').forEach(el => {
+                el.removeAttribute('onclick');
+                el.style.cursor = 'default';
+            });
+            
+            // Atualiza badge de status
+            const statusBadge = document.getElementById('statusBadge');
+            statusBadge.innerHTML = 'CONCLUÍDA';
+            statusBadge.classList.add('tooltip');
+            
+            const tooltipSpan = document.createElement('span');
+            tooltipSpan.className = 'tooltip-text';
+            tooltipSpan.innerText = 'Processo finalizado - Nenhuma alteração permitida';
+            statusBadge.appendChild(tooltipSpan);
+        }
+
+        // ==========================================
+        // FUNÇÕES DE NOTIFICAÇÃO
+        // ==========================================
+        function mostrarNotificacao(tipo, titulo, mensagem) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const titleEl = document.getElementById('toastTitle');
+            const messageEl = document.getElementById('toastMessage');
+            
+            toast.className = 'toast-notification';
+            
+            switch(tipo) {
+                case 'success':
+                    toast.classList.add('toast-success');
+                    icon.innerHTML = '<i data-lucide="check-circle" class="w-6 h-6 text-green-500"></i>';
+                    break;
+                case 'error':
+                    toast.classList.add('toast-error');
+                    icon.innerHTML = '<i data-lucide="x-circle" class="w-6 h-6 text-red-500"></i>';
+                    break;
+                case 'warning':
+                    toast.classList.add('toast-warning');
+                    icon.innerHTML = '<i data-lucide="alert-triangle" class="w-6 h-6 text-yellow-500"></i>';
+                    break;
+                default:
+                    toast.classList.add('toast-info');
+                    icon.innerHTML = '<i data-lucide="info" class="w-6 h-6 text-blue-500"></i>';
+            }
+            
+            titleEl.innerText = titulo;
+            messageEl.innerText = mensagem;
+            
+            toast.classList.remove('hidden');
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 4000);
+        }
+
+        // ==========================================
+        // FUNÇÕES DOS MODAIS DE EDIÇÃO
+        // ==========================================
+        function editarDataInstauracao() {
+            if (processoFinalizado) {
+                mostrarNotificacao('warning', 'Processo Finalizado', 'Não é possível editar um processo concluído');
+                return;
+            }
+            const dataAtual = document.getElementById('dataInstauracao').innerText;
+            if (dataAtual !== 'Clique para editar') {
+                const partes = dataAtual.split('/');
+                if (partes.length === 3) {
+                    document.getElementById('editDataInstauracao').value = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                }
+            }
+            abrirModal('modalDataInstauracao');
+        }
+
+        function editarInstauradoPor() {
+            if (processoFinalizado) {
+                mostrarNotificacao('warning', 'Processo Finalizado', 'Não é possível editar um processo concluído');
+                return;
+            }
+            const atual = document.getElementById('instauradoPor').innerText;
+            document.getElementById('editInstauradoPor').value = atual;
+            abrirModal('modalInstauradoPor');
+        }
+
+        function editarPrazoLegal() {
+            if (processoFinalizado) {
+                mostrarNotificacao('warning', 'Processo Finalizado', 'Não é possível editar um processo concluído');
+                return;
+            }
+            const atual = document.getElementById('prazoLegal').innerText;
+            if (atual !== 'Clique para definir') {
+                const partes = atual.split('/');
+                if (partes.length === 3) {
+                    document.getElementById('editPrazoLegal').value = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                }
+            }
+            abrirModal('modalPrazoLegal');
+        }
+
+        function abrirModal(modalId) {
+            document.body.classList.add('modal-open');
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function fecharModal(modalId) {
+            document.body.classList.remove('modal-open');
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function salvarDataInstauracao() {
+            const novaData = document.getElementById('editDataInstauracao').value;
+            if (novaData) {
+                const [ano, mes, dia] = novaData.split('-');
+                document.getElementById('dataInstauracao').innerText = `${dia}/${mes}/${ano}`;
+                mostrarNotificacao('success', 'Sucesso', 'Data atualizada com sucesso!');
+            }
+            fecharModal('modalDataInstauracao');
+        }
+
+        function salvarInstauradoPor() {
+            const novoValor = document.getElementById('editInstauradoPor').value;
+            if (novoValor) {
+                document.getElementById('instauradoPor').innerText = novoValor;
+                mostrarNotificacao('success', 'Sucesso', 'Responsável atualizado com sucesso!');
+            }
+            fecharModal('modalInstauradoPor');
+        }
+
+        function salvarPrazoLegal() {
+            const novaData = document.getElementById('editPrazoLegal').value;
+            if (novaData) {
+                const [ano, mes, dia] = novaData.split('-');
+                document.getElementById('prazoLegal').innerText = `${dia}/${mes}/${ano}`;
+                mostrarNotificacao('success', 'Sucesso', 'Prazo atualizado com sucesso!');
+            }
+            fecharModal('modalPrazoLegal');
+        }
+
+        // ==========================================
+        // FUNÇÕES DO MODAL DE CONFIRMAÇÃO
+        // ==========================================
+        function mostrarModalConfirmacao() {
+            if (processoFinalizado) return;
+            
+            const relatorio = document.getElementById('relatorioFinal').value;
+            const conclusao = document.getElementById('conclusao').value;
+            
+            if (!relatorio || !conclusao) {
+                mostrarNotificacao('warning', 'Atenção', 'Preencha o relatório final e a conclusão antes de finalizar');
+                return;
+            }
+            
+            document.getElementById('confirmProtocolo').innerText = protocoloAtual;
+            abrirModal('modalConfirmacao');
+            lucide.createIcons();
+        }
+
+        function fecharModalConfirmacao() {
+            fecharModal('modalConfirmacao');
+        }
+
+        // ==========================================
+        // FUNÇÕES DE CARREGAMENTO
+        // ==========================================
+        async function carregarSindicancia(protocolo) {
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch(`/api/sindicancia/${protocolo}`);
+                const data = await response.json();
+                
+                if (data.existe) {
+                    preencherDadosSindicancia(data.sindicancia);
+                } else {
+                    await instaurarSindicancia(protocolo);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar sindicância:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro ao carregar dados da sindicância');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        async function instaurarSindicancia(protocolo) {
+            try {
+                const response = await fetch('/api/sindicancia/instaurar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ protocolo })
+                });
+                
+                if (response.ok) {
+                    mostrarNotificacao('success', 'Sucesso', 'Sindicância instaurada com sucesso!');
+                }
+            } catch (error) {
+                console.error('Erro ao instaurar sindicância:', error);
+            }
+        }
+
+        function preencherDadosSindicancia(dados) {
+            if (dados.data_instauracao) {
+                document.getElementById('dataInstauracao').innerText = dados.data_instauracao;
+            }
+            if (dados.instaurado_por) {
+                document.getElementById('instauradoPor').innerText = dados.instaurado_por;
+            }
+            if (dados.prazo_limite) {
+                document.getElementById('prazoLegal').innerText = dados.prazo_limite;
+                const [dia, mes, ano] = dados.prazo_limite.split('/');
+                document.getElementById('prazoFinal').value = `${ano}-${mes}-${dia}`;
+            }
+            if (dados.relatorio_final) {
+                document.getElementById('relatorioFinal').value = dados.relatorio_final;
+            }
+            if (dados.tipo_sindicancia) {
+                document.getElementById('tipoSindicancia').value = dados.tipo_sindicancia;
+            }
+            if (dados.conclusao) {
+                document.getElementById('conclusao').value = dados.conclusao;
+            }
+            if (dados.data_conclusao) {
+                const [dia, mes, ano] = dados.data_conclusao.split('/');
+                document.getElementById('dataConclusao').value = `${ano}-${mes}-${dia}`;
+            }
+            
+            // Se já estiver concluída, bloqueia
+            if (dados.status === 'concluida') {
+                document.getElementById('statusBadge').innerText = 'CONCLUÍDA';
+                document.getElementById('statusBadge').className = 'status-badge status-concluida';
+                bloquearCampos();
+            }
+            
+            // Carrega membros
+            if (dados.comissao && dados.comissao.length > 0) {
+                document.getElementById('listaMembros').innerHTML = '';
+                dados.comissao.forEach(membro => {
+                    adicionarMembroNaLista(membro.nome, membro.funcao, false);
+                });
+            }
+            
+            // Carrega diligências
+            if (dados.diligencias && dados.diligencias.length > 0) {
+                document.getElementById('listaDiligencias').innerHTML = '';
+                dados.diligencias.forEach(diligencia => {
+                    adicionarDiligenciaNaLista(diligencia, false);
+                });
+            }
+            
+            // ==========================================
+            // CARREGA PROVAS DO BANCO DE DADOS
+            // ==========================================
+            if (dados.provas && dados.provas.length > 0) {
+                document.getElementById('listaProvas').innerHTML = '';
+                dados.provas.forEach(prova => {
+                    adicionarProvaNaLista(prova, false);
+                });
+            }
+        }
+
+        // ==========================================
+        // FUNÇÕES DE MEMBROS
+        // ==========================================
+        function mostrarFormMembro() {
+            if (processoFinalizado) return;
+            document.getElementById('formMembro').classList.remove('hidden');
+        }
+
+        function cancelarFormMembro() {
+            document.getElementById('formMembro').classList.add('hidden');
+            document.getElementById('membroNome').value = '';
+        }
+
+        async function adicionarMembro() {
+            if (processoFinalizado) return;
+            
+            const nome = document.getElementById('membroNome').value.trim();
+            const funcao = document.getElementById('membroFuncao').value;
+            
+            if (!nome) {
+                mostrarNotificacao('warning', 'Atenção', 'Digite o nome do membro');
+                return;
+            }
+            
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/sindicancia/adicionar-membro', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        protocolo: protocoloAtual,
+                        nome: nome,
+                        funcao: funcao
+                    })
+                });
+                
+                if (response.ok) {
+                    adicionarMembroNaLista(nome, funcao, true);
+                    cancelarFormMembro();
+                    mostrarNotificacao('success', 'Sucesso', 'Membro adicionado com sucesso!');
+                }
+            } catch (error) {
+                console.error('Erro ao adicionar membro:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro ao adicionar membro');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        function adicionarMembroNaLista(nome, funcao, salvarNoBanco = true) {
+            const lista = document.getElementById('listaMembros');
+            
+            if (lista.children.length === 1 && lista.children[0].classList.contains('text-center')) {
+                lista.innerHTML = '';
+            }
+            
+            const iniciais = nome.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+            
+            const membroHtml = `
+                <div class="membro-card flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200" data-nome="${nome}">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold">${iniciais}</div>
+                    <div class="flex-1">
+                        <p class="text-sm font-bold text-slate-800">${nome}</p>
+                        <p class="text-[10px] text-slate-500">${funcao}</p>
+                    </div>
+                    <button onclick="removerMembro(this)" class="text-red-400 hover:text-red-600">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `;
+            
+            lista.insertAdjacentHTML('beforeend', membroHtml);
+            lucide.createIcons();
+        }
+
+        async function removerMembro(btn) {
+            if (processoFinalizado) return;
+            if (!confirm('Remover este membro da comissão?')) return;
+            
+            const card = btn.closest('.membro-card');
+            const nome = card.dataset.nome;
+            
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/sindicancia/remover-membro', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        protocolo: protocoloAtual,
+                        nome: nome
+                    })
+                });
+                
+                if (response.ok) {
+                    card.remove();
+                    
+                    if (document.getElementById('listaMembros').children.length === 0) {
+                        document.getElementById('listaMembros').innerHTML = '<div class="text-center text-slate-400 text-sm py-4">Nenhum membro designado. Clique em "ADICIONAR" para começar.</div>';
+                    }
+                    
+                    mostrarNotificacao('success', 'Sucesso', 'Membro removido com sucesso!');
+                }
+            } catch (error) {
+                console.error('Erro ao remover membro:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro ao remover membro');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        // ==========================================
+        // FUNÇÕES DE DILIGÊNCIAS
+        // ==========================================
+        function mostrarFormDiligencia() {
+            if (processoFinalizado) return;
+            document.getElementById('formDiligencia').classList.remove('hidden');
+        }
+
+        function cancelarFormDiligencia() {
+            document.getElementById('formDiligencia').classList.add('hidden');
+            document.getElementById('diligenciaTitulo').value = '';
+            document.getElementById('diligenciaDescricao').value = '';
+        }
+
+        async function salvarDiligencia() {
+            if (processoFinalizado) return;
+            
+            const data = document.getElementById('diligenciaData').value;
+            const titulo = document.getElementById('diligenciaTitulo').value.trim();
+            const descricao = document.getElementById('diligenciaDescricao').value.trim();
+            
+            if (!titulo || !descricao) {
+                mostrarNotificacao('warning', 'Atenção', 'Preencha todos os campos');
+                return;
+            }
+            
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/sindicancia/adicionar-diligencia', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        protocolo: protocoloAtual,
+                        data: data,
+                        titulo: titulo,
+                        descricao: descricao
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    adicionarDiligenciaNaLista(result.diligencia, true);
+                    cancelarFormDiligencia();
+                    mostrarNotificacao('success', 'Sucesso', 'Diligência registrada com sucesso!');
+                }
+            } catch (error) {
+                console.error('Erro ao salvar diligência:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro ao salvar diligência');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        function adicionarDiligenciaNaLista(diligencia, salvarNoBanco = true) {
+            const lista = document.getElementById('listaDiligencias');
+            
+            if (lista.children.length === 1 && lista.children[0].classList.contains('text-center')) {
+                lista.innerHTML = '';
+            }
+            
+            const dataFormatada = diligencia.data ? new Date(diligencia.data + 'T12:00:00').toLocaleDateString('pt-BR') : diligencia.data;
+            
+            const diligenciaHtml = `
+                <div class="diligencia-item p-4 bg-white rounded-xl border border-slate-200" data-titulo="${diligencia.titulo}" data-data="${diligencia.data}">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-blue-600">${dataFormatada}</p>
+                            <p class="text-sm font-bold text-slate-800 mt-1">${diligencia.titulo}</p>
+                            <p class="text-xs text-slate-600 mt-2">${diligencia.descricao}</p>
+                            <p class="text-[9px] text-slate-400 mt-2">Registrado por: ${diligencia.registrado_por || '{{ session.get('admin_nome', 'Admin') }}'}</p>
+                        </div>
+                        <button onclick="removerDiligencia(this)" class="text-red-400 hover:text-red-600">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            lista.insertAdjacentHTML('beforeend', diligenciaHtml);
+            lucide.createIcons();
+        }
+
+        async function removerDiligencia(btn) {
+            if (processoFinalizado) return;
+            if (!confirm('Remover esta diligência?')) return;
+            
+            const card = btn.closest('.diligencia-item');
+            const titulo = card.dataset.titulo;
+            const data = card.dataset.data;
+            
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/sindicancia/remover-diligencia', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        protocolo: protocoloAtual,
+                        titulo: titulo,
+                        data: data
+                    })
+                });
+                
+                if (response.ok) {
+                    card.remove();
+                    
+                    if (document.getElementById('listaDiligencias').children.length === 0) {
+                        document.getElementById('listaDiligencias').innerHTML = '<div class="text-center text-slate-400 text-sm py-8">Nenhuma diligência registrada. Clique em "NOVA DILIGÊNCIA" para começar.</div>';
+                    }
+                    
+                    mostrarNotificacao('success', 'Sucesso', 'Diligência removida com sucesso!');
+                }
+            } catch (error) {
+                console.error('Erro ao remover diligência:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro ao remover diligência');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        // ==========================================
+        // FUNÇÕES DE PROVAS - ATUALIZADAS PARA USAR A API
+        // ==========================================
+        function mostrarFormProva() {
+            if (processoFinalizado) return;
+            document.getElementById('formProva').classList.remove('hidden');
+        }
+
+        function cancelarFormProva() {
+            document.getElementById('formProva').classList.add('hidden');
+            document.getElementById('provaArquivo').value = '';
+            document.getElementById('provaDescricao').value = '';
+            document.getElementById('provaTipo').value = 'documento';
+        }
+
+        async function salvarProva() {
+            if (processoFinalizado) return;
+            
+            const arquivo = document.getElementById('provaArquivo').files[0];
+            const descricao = document.getElementById('provaDescricao').value.trim();
+            const tipo = document.getElementById('provaTipo').value;
+            
+            if (!arquivo || !descricao) {
+                mostrarNotificacao('warning', 'Atenção', 'Selecione um arquivo e preencha a descrição');
+                return;
+            }
+            
+            mostrarLoading(true);
+            
+            try {
+                const formData = new FormData();
+                formData.append('protocolo', protocoloAtual);
+                formData.append('descricao', descricao);
+                formData.append('tipo', tipo);
+                formData.append('arquivo', arquivo);
+                
+                const response = await fetch('/api/sindicancia/adicionar-prova', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    adicionarProvaNaLista(result.prova, true);
+                    cancelarFormProva();
+                    mostrarNotificacao('success', 'Sucesso', 'Prova anexada com sucesso!');
+                } else {
+                    mostrarNotificacao('error', 'Erro', result.erro || 'Erro ao anexar prova');
+                }
+            } catch (error) {
+                console.error('Erro ao anexar prova:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro ao anexar prova');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        function adicionarProvaNaLista(prova, salvarNoBanco = true) {
+            const lista = document.getElementById('listaProvas');
+            
+            if (lista.children.length === 1 && lista.children[0].classList.contains('text-center')) {
+                lista.innerHTML = '';
+            }
+            
+            const icones = {
+                'documento': 'file-text',
+                'imagem': 'image',
+                'email': 'mail',
+                'contrato': 'file-signature',
+                'depoimento': 'mic',
+                'outro': 'file'
+            };
+            
+            const icone = icones[prova.tipo] || 'file';
+            
+            // Pega a data do anexo (se existir)
+            const dataExibicao = prova.data_anexo ? prova.data_anexo.split(' ')[0] : prova.data || '';
+            
+            const provaHtml = `
+                <div class="anexo-card flex items-center gap-3" data-nome="${prova.nome}" data-data-anexo="${prova.data_anexo || ''}">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                        <i data-lucide="${icone}" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-bold text-slate-800">${prova.nome}</p>
+                        <p class="text-xs text-slate-500">${prova.descricao}</p>
+                        <p class="text-[9px] text-slate-400 mt-1">${dataExibicao}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="/sindicancia/prova/${protocoloAtual}/${encodeURIComponent(prova.nome)}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </a>
+                        <button onclick="removerProva(this)" class="text-red-400 hover:text-red-600">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            lista.insertAdjacentHTML('beforeend', provaHtml);
+            lucide.createIcons();
+        }
+
+        async function removerProva(btn) {
+            if (processoFinalizado) return;
+            if (!confirm('Remover esta prova?')) return;
+            
+            const card = btn.closest('.anexo-card');
+            const nome = card.dataset.nome;
+            const dataAnexo = card.dataset.dataAnexo;
+            
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/sindicancia/remover-prova', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        protocolo: protocoloAtual,
+                        nome: nome,
+                        data_anexo: dataAnexo
+                    })
+                });
+                
+                if (response.ok) {
+                    card.remove();
+                    
+                    if (document.getElementById('listaProvas').children.length === 0) {
+                        document.getElementById('listaProvas').innerHTML = '<div class="text-center text-slate-400 text-sm py-4">Nenhuma prova anexada. Clique em "ANEXAR PROVA" para adicionar.</div>';
+                    }
+                    
+                    mostrarNotificacao('success', 'Sucesso', 'Prova removida com sucesso!');
+                } else {
+                    const result = await response.json();
+                    mostrarNotificacao('error', 'Erro', result.erro || 'Erro ao remover prova');
+                }
+            } catch (error) {
+                console.error('Erro ao remover prova:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro ao remover prova');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        // ==========================================
+        // FUNÇÕES DE FINALIZAÇÃO
+        // ==========================================
+        async function salvarRascunho() {
+            if (processoFinalizado) {
+                mostrarNotificacao('warning', 'Processo Finalizado', 'Não é possível editar um processo concluído');
+                return;
+            }
+            
+            const relatorio = document.getElementById('relatorioFinal').value;
+            const tipoSindicancia = document.getElementById('tipoSindicancia').value;
+            const conclusao = document.getElementById('conclusao').value;
+            const dataConclusao = document.getElementById('dataConclusao').value;
+            const prazo = document.getElementById('prazoFinal').value;
+            
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/sindicancia/salvar-relatorio', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        protocolo: protocoloAtual,
+                        relatorio: relatorio,
+                        tipo_sindicancia: tipoSindicancia,
+                        conclusao: conclusao,
+                        data_conclusao: dataConclusao,
+                        prazo: prazo,
+                        status: 'em_andamento'
+                    })
+                });
+                
+                if (response.ok) {
+                    mostrarNotificacao('success', 'Sucesso', 'Rascunho salvo com sucesso!');
+                }
+            } catch (error) {
+                console.error('Erro ao salvar rascunho:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro ao salvar rascunho');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        async function finalizarSindicancia() {
+            // Verifica checkboxes
+            const check1 = document.getElementById('check1').checked;
+            const check2 = document.getElementById('check2').checked;
+            const check3 = document.getElementById('check3').checked;
+            const check4 = document.getElementById('check4').checked;
+            const check5 = document.getElementById('check5').checked;
+            
+            if (!check1 || !check2 || !check3 || !check4 || !check5) {
+                mostrarNotificacao('warning', 'Checklist Incompleto', 'Marque todos os itens do checklist antes de finalizar');
+                return;
+            }
+            
+            const relatorio = document.getElementById('relatorioFinal').value;
+            const tipoSindicancia = document.getElementById('tipoSindicancia').value;
+            const conclusao = document.getElementById('conclusao').value;
+            const dataConclusao = document.getElementById('dataConclusao').value;
+            const prazo = document.getElementById('prazoFinal').value;
+            
+            fecharModalConfirmacao();
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/sindicancia/salvar-relatorio', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        protocolo: protocoloAtual,
+                        relatorio: relatorio,
+                        tipo_sindicancia: tipoSindicancia,
+                        conclusao: conclusao,
+                        data_conclusao: dataConclusao,
+                        prazo: prazo,
+                        status: 'concluida'
+                    })
+                });
+                
+                if (response.ok) {
+                    document.getElementById('statusBadge').innerText = 'CONCLUÍDA';
+                    document.getElementById('statusBadge').className = 'status-badge status-concluida';
+                    
+                    mostrarNotificacao('success', 'Sucesso', 'Sindicância finalizada com sucesso!');
+                    
+                    // BLOQUEIO TOTAL - Mas mantém botões de navegação e PDF
+                    bloquearCampos();
+                }
+            } catch (error) {
+                console.error('Erro ao finalizar sindicância:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro ao finalizar sindicância');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        function gerarPDF() {
+            window.open(`/gestao/sindicancia/${protocoloAtual}`, '_blank');
+        }
+
+        // ==========================================
+        // UTILITÁRIOS
+        // ==========================================
+        function mostrarLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                abrirModal('loadingOverlay');
+            } else {
+                fecharModal('loadingOverlay');
+            }
+        }
+    </script>
+</body>
+</html>

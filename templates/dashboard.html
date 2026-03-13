@@ -11,16 +11,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 
-    <title>Gestão de Integridade | Painel Administrativo V2.0</title>
+    <title>Gestão de Integridade | {{ empresa_site.nome }}</title>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
         :root {
             --primary: #2563eb;
+            --primary-dark: #1e40af;
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
+            --purple: #8b5cf6;
             --slate-bg: #f8fafc;
         }
 
@@ -44,19 +46,17 @@
             border-radius: 10px;
         }
 
-       .card-stats {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border-left-width: 5px;
-    /* Adicionamos uma sombra base transparente ou leve para a transição ser suave */
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    background-color: #fff; /* Garante que o fundo seja sólido para a sombra aparecer */
-}
+        .card-stats {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left-width: 5px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background-color: #fff;
+        }
 
-.card-stats:hover {
-    transform: translateY(-5px);
-    /* Correção da propriedade: box-shadow */
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
+        .card-stats:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
 
         /* Controle de Visualização */
         .dashboard-view,
@@ -119,7 +119,7 @@
 
         .option-item:hover {
             background: #eff6ff;
-            color: #2563eb;
+            color: var(--primary);
         }
 
         /* Status Pills */
@@ -134,10 +134,145 @@
             text-transform: uppercase;
         }
 
-        /* 🔒 ESTILO PARA PROCESSOS FINALIZADOS */
+        /* Modais */
+        .modal-modern {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 980px;
+            transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        /* 🔔 ESTILOS DAS NOTIFICAÇÕES */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .badge-pulse {
+            animation: pulse 2s infinite;
+        }
+
+        .notificacao-item {
+            transition: all 0.2s ease;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 1rem;
+            cursor: pointer;
+        }
+
+        .notificacao-item:hover {
+            background: #f8fafc;
+        }
+
+        .notificacao-item.nao-lida {
+            background: #eff6ff;
+            border-left: 3px solid #2563eb;
+        }
+
+        .notificacoes-dropdown {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 0.5rem;
+            width: 320px;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e2e8f0;
+            z-index: 1000;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 640px) {
+            .notificacoes-dropdown {
+                width: 280px;
+                right: -70px;
+            }
+        }
+
+        /* 🔒 ESTILO PARA MODO LEITURA */
+        .modo-leitura {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
         #alerta_finalizada {
             transition: all 0.3s ease;
-            border-left: 4px solid #f59e0b;
+        }
+
+        /* Estilo para o link do anexo */
+        .anexo-link {
+            background-color: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #0369a1;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .anexo-link:hover {
+            background-color: #e0f2fe;
+            border-color: #7dd3fc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(2, 106, 162, 0.2);
+        }
+
+        .anexo-link i {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Grupo de botões */
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        /* Badge de conclusão para sindicância */
+        .sindicancia-concluida {
+            background-color: #10b981;
+            color: white;
+            font-size: 8px;
+            padding: 2px 6px;
+            border-radius: 12px;
+            margin-left: 4px;
+            font-weight: 700;
+            text-transform: uppercase;
         }
     </style>
 </head>
@@ -154,7 +289,7 @@
                 <div class="flex flex-col">
                     <span class="font-extrabold text-xl tracking-tighter uppercase italic text-slate-700 leading-none">
                         <span id="labelNomeEmpresa" class="text-blue-600">
-                            {{ session.get('unidade') or session.get('empresa_nome') or 'Geral' }}
+                            {{ session.get('admin_empresa_nome') or empresa_site.nome }}
                         </span>
                         <span class="text-slate-400 font-light"> | Gestão Visual</span>
                     </span>
@@ -164,38 +299,61 @@
             </div>
 
             <div class="flex items-center gap-6">
-    <div class="hidden xl:flex flex-col items-end pr-6 border-r border-slate-200">
-        <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Sessão Ativa</span>
-        <span id="labelUnidadeLogada" class="text-xs font-bold text-blue-600 italic">
-            {{ session.get('admin_empresa_nome', 'Admin Master') }}
-        </span>
-        <span class="text-[8px] text-slate-400 font-medium italic">
-            Operador: {{ session.get('admin_nome', 'Suporte') }}
-        </span>
-    </div>
-</div>
+                <div class="hidden xl:flex flex-col items-end pr-6 border-r border-slate-200">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Sessão Ativa</span>
+                    <span id="labelUnidadeLogada" class="text-xs font-bold text-blue-600 italic">
+                        {{ session.get('admin_empresa_nome', 'Admin Master') }}
+                    </span>
+                    <span class="text-[8px] text-slate-400 font-medium italic">
+                        Operador: {{ session.get('admin_nome', 'Suporte') }}
+                    </span>
+                </div>
 
-                <div class="flex items-center gap-3">
-                    <button onclick="toggleSupport()"
-                        class="group bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm">
-                        <i data-lucide="help-circle" class="w-4 h-4 text-slate-400 group-hover:text-blue-600"></i> AJUDA
+                <!-- 🔔 SINO DE NOTIFICAÇÕES - SÓ MOSTRA RECEBIDO -->
+                <div class="relative">
+                    <button onclick="toggleNotificacoes()" class="relative p-2 rounded-xl hover:bg-slate-100 transition-all group">
+                        <i data-lucide="bell" class="w-5 h-5 text-slate-600 group-hover:text-blue-600"></i>
+                        <span id="notificacaoBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full hidden">0</span>
                     </button>
-
-                    <button onclick="toggleView()" id="btnViewToggle"
-                        class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-100">
-                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> DASHBOARD
-                    </button>
-
-                    <div class="flex items-center gap-1 ml-2 bg-slate-100 p-1.5 rounded-xl">
-                        <button onclick="toggleConfig()"
-                            class="text-slate-500 hover:text-blue-600 p-2 rounded-lg hover:bg-white transition-all shadow-none hover:shadow-sm">
-                            <i data-lucide="settings" class="w-5 h-5"></i>
-                        </button>
-                        <a href="/logout"
-                            class="text-red-500 hover:bg-red-500 hover:text-white p-2 rounded-lg transition-all">
-                            <i data-lucide="log-out" class="w-5 h-5"></i>
-                        </a>
+                    
+                    <!-- Dropdown de notificações -->
+                    <div id="notificacoesDropdown" class="notificacoes-dropdown hidden">
+                        <div class="p-4 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-2xl">
+                            <h3 class="text-xs font-black uppercase tracking-widest">Notificações</h3>
+                        </div>
+                        <div id="listaNotificacoes" class="max-h-96 overflow-y-auto custom-scroll">
+                            <!-- Notificações serão inseridas aqui via JavaScript -->
+                            <div class="p-4 text-center text-slate-400 text-xs">Nenhuma notificação</div>
+                        </div>
+                        <div class="p-3 border-t border-slate-100 text-center bg-slate-50 rounded-b-2xl">
+                            <button onclick="marcarTodasLidas()" class="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider">
+                                Marcar todas como lidas
+                            </button>
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSupport()"
+                    class="group bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm">
+                    <i data-lucide="help-circle" class="w-4 h-4 text-slate-400 group-hover:text-blue-600"></i> AJUDA
+                </button>
+
+                <button onclick="toggleView()" id="btnViewToggle"
+                    class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-100">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> DASHBOARD
+                </button>
+
+                <div class="flex items-center gap-1 ml-2 bg-slate-100 p-1.5 rounded-xl">
+                    <button onclick="toggleConfig()"
+                        class="text-slate-500 hover:text-blue-600 p-2 rounded-lg hover:bg-white transition-all shadow-none hover:shadow-sm">
+                        <i data-lucide="settings" class="w-5 h-5"></i>
+                    </button>
+                    <a href="/logout"
+                        class="text-red-500 hover:bg-red-500 hover:text-white p-2 rounded-lg transition-all">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    </a>
                 </div>
             </div>
         </div>
@@ -286,7 +444,7 @@
                         class="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                 </div>
                 <button onclick="salvarNovoAcessoGlobal()"
-                    class="w-full bg-slate-800 text-white text-[11px] font-bold py-4 rounded-xl hover:bg-blue-600 transition-all uppercase tracking-[0.15em] flex items-center justify-center gap-3 shadow-lg">
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-4 rounded-xl transition-all uppercase tracking-[0.15em] flex items-center justify-center gap-3 shadow-lg">
                     <i data-lucide="save" class="w-4 h-4"></i> Atualizar Acesso
                 </button>
             </div>
@@ -334,7 +492,7 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-            <div class="bg-white p-7 rounded-3xl shadow-sm border border-slate-200 card-stats border-l-slate-800">
+            <div class="bg-white p-7 rounded-3xl shadow-sm border border-slate-200 card-stats border-l-blue-600">
                 <div class="flex justify-between items-start mb-4">
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Geral</p>
                     <div class="p-2 bg-slate-100 rounded-lg text-slate-600"><i data-lucide="bar-chart-3"
@@ -377,7 +535,7 @@
         </div>
 
         <div id="dashboardArea" class="dashboard-view space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div class="flex justify-between items-center bg-slate-800 p-6 rounded-2xl shadow-lg">
+            <div class="flex justify-between items-center bg-blue-600 p-6 rounded-2xl shadow-lg">
                 <div class="flex items-center gap-4 text-white">
                     <div class="bg-blue-500/20 p-2 rounded-lg border border-blue-500/30">
                         <i data-lucide="presentation" class="w-6 h-6 text-blue-400"></i>
@@ -443,7 +601,7 @@
                                 <th class="px-8 py-5">Data/Registro</th>
                                 <th class="px-8 py-5">Unidade Responsável</th>
                                 <th class="px-8 py-5">Status Atual</th>
-                                <th class="px-8 py-5 text-right">Intervenção</th>
+                                <th class="px-8 py-5 text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50">
@@ -464,29 +622,42 @@
                                 </td>
                                 <td class="px-8 py-5">
                                     <span class="status-pill
-    {% if d.status and 'Recebido' in d.status %} 
-        bg-orange-100 text-orange-600 border border-orange-200
-    {% elif d.status and 'Investigação' in d.status %} 
-        bg-blue-100 text-blue-600 border border-blue-200
-    {% elif d.status and 'Finalizada' in d.status %} 
-        bg-emerald-100 text-emerald-600 border border-emerald-200
-    {% else %} 
-        bg-slate-100 text-slate-500 border border-slate-200 
-    {% endif %}">
-    
-    <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
-    {{ d.status or 'Recebido' }}
-</span>
+                                    {% if d.status and 'Recebido' in d.status %} 
+                                        bg-orange-100 text-orange-600 border border-orange-200
+                                    {% elif d.status and 'Investigação' in d.status %} 
+                                        bg-blue-100 text-blue-600 border border-blue-200
+                                    {% elif d.status and 'Finalizada' in d.status %} 
+                                        bg-emerald-100 text-emerald-600 border border-emerald-200
+                                    {% else %} 
+                                        bg-slate-100 text-slate-500 border border-slate-200 
+                                    {% endif %}">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                                        {{ d.status or 'Recebido' }}
+                                    </span>
                                 </td>
                                 <td class="px-8 py-5 text-right">
-                                    <button onclick="prepararModal(this)" data-protocolo="{{ d.protocolo }}"
-                                        data-status="{{ d.status }}" data-parecer="{{ d.parecer_comite or '' }}"
-                                        data-unidade="{{ d.unidade }}" data-relato="{{ d.relato }}"
-                                        data-categoria="{{ d.categoria }}" data-data="{{ d.data }}"
-                                        data-email="{{ d.email_contato or '' }}"
-                                        class="bg-slate-800 hover:bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-2 ml-auto shadow-md hover:shadow-blue-200 uppercase tracking-widest">
-                                        <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Tratar Relato
-                                    </button>
+                                    <div class="btn-group">
+                                        <!-- Botão Tratar Relato -->
+                                        <button onclick="prepararModal(this)" data-protocolo="{{ d.protocolo }}"
+                                            data-status="{{ d.status }}" data-parecer="{{ d.parecer_comite or '' }}"
+                                            data-unidade="{{ d.unidade }}" data-relato="{{ d.relato }}"
+                                            data-categoria="{{ d.categoria }}" data-data="{{ d.data }}"
+                                            data-email="{{ d.email_contato or '' }}"
+                                            data-anexo="{{ d.anexo or '' }}"
+                                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-1 shadow-md hover:shadow-blue-200 uppercase tracking-widest">
+                                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Tratar
+                                        </button>
+                                        
+                                        <!-- Botão Sindicância com indicador de status -->
+                                        <a href="/sindicancia/{{ d.protocolo }}" 
+                                            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-1 shadow-md hover:shadow-purple-200 uppercase tracking-widest">
+                                            <i data-lucide="scale" class="w-3.5 h-3.5"></i> 
+                                            Sindicância
+                                            {% if d.sindicancia_status and 'concluida' in d.sindicancia_status|lower %}
+                                            <span class="sindicancia-concluida">CONCLUÍDA</span>
+                                            {% endif %}
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -501,16 +672,17 @@
         class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] hidden transition-opacity duration-300"
         onclick="fechar()"></div>
 
+    <!-- MODAL DE TRATATIVA - ATUALIZADO COM PRÉ-VISUALIZAÇÃO -->
     <div id="modal"
         class="fixed top-0 right-0 h-full w-full max-w-2xl bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.1)] z-[70] transform translate-x-full transition-transform duration-500 ease-in-out flex flex-col">
-        <div class="bg-slate-900 p-8 text-white flex justify-between items-center shrink-0">
+        <div class="bg-blue-600 p-8 text-white flex justify-between items-center shrink-0">
             <div class="flex items-center gap-5">
-                <div class="bg-blue-600 p-3 rounded-2xl shadow-xl shadow-blue-500/20">
+                <div class="bg-blue-500 p-3 rounded-2xl shadow-xl shadow-blue-500/20">
                     <i data-lucide="file-text" class="w-7 h-7"></i>
                 </div>
                 <div>
                     <h2 class="text-xl font-black uppercase italic tracking-tight">Dossiê de Tratativa</h2>
-                    <p class="text-blue-400 text-[10px] font-mono mt-1 font-bold">PROTOCOLO SEGURADO: <span
+                    <p class="text-blue-200 text-[10px] font-mono mt-1 font-bold">PROTOCOLO: <span
                             id="prot_titulo" class="text-white bg-blue-500/20 px-2 py-0.5 rounded"></span></p>
                 </div>
             </div>
@@ -527,7 +699,7 @@
             </p>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-10 space-y-10 custom-scroll">
+        <div class="flex-1 overflow-y-auto p-10 space-y-6 custom-scroll">
             <div class="grid grid-cols-2 gap-6">
                 <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner">
                     <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Unidade de Origem</p>
@@ -536,6 +708,17 @@
                 <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner">
                     <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Data do Registro</p>
                     <p id="txt_data_registro" class="text-sm font-extrabold text-slate-700"></p>
+                </div>
+            </div>
+
+            <!-- Visualizador de imagem inline para anexos -->
+            <div id="visualizador_imagem" class="hidden">
+                <div class="flex items-center gap-2 mb-2">
+                    <i data-lucide="image" class="w-4 h-4 text-slate-400"></i>
+                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pré-visualização do Anexo</h4>
+                </div>
+                <div class="bg-slate-100 p-4 rounded-2xl border border-slate-200 flex justify-center">
+                    <img id="imagem_preview" src="" alt="Pré-visualização do anexo" class="max-h-96 max-w-full object-contain rounded-lg">
                 </div>
             </div>
 
@@ -554,48 +737,42 @@
                 </div>
             </div>
 
-           <form action="/atualizar_denuncia" method="POST" id="formTratativa" class="space-y-8 pt-4 border-t border-slate-100">
-    
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="protocolo" id="input_prot">
-    <input type="hidden" name="email_denunciante" id="input_email">
+            <form action="/atualizar_denuncia" method="POST" id="formTratativa" class="space-y-8 pt-4 border-t border-slate-100">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="protocolo" id="input_prot">
+                <input type="hidden" name="email_denunciante" id="input_email">
 
-    <div class="space-y-3">
-        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-            <i data-lucide="activity" class="w-3.5 h-3.5"></i> Alterar Status
-        </label>
-        <div class="relative">
-            <select name="status" id="select_status"
-                class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-extrabold text-slate-700 text-sm appearance-none transition-all cursor-pointer">
-                <option value="Recebido">🟡 Recebido / Aguardando Triagem</option>
-                <option value="Investigação">🔵 Em Investigação Ativa</option>
-                <option value="Finalizada">🟢 Finalizada e Arquivada</option>
-            </select>
-            <div class="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                <i data-lucide="chevron-down" class="w-5 h-5"></i>
-            </div>
+                <div class="space-y-3">
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <i data-lucide="activity" class="w-3.5 h-3.5"></i> Alterar Status
+                    </label>
+                    <div class="relative">
+                        <select name="status" id="select_status"
+                            class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-extrabold text-slate-700 text-sm appearance-none transition-all cursor-pointer">
+                            <option value="Recebido">🟡 Recebido / Aguardando Triagem</option>
+                            <option value="Investigação">🔵 Em Investigação Ativa</option>
+                            <option value="Finalizada">🟢 Finalizada e Arquivada</option>
+                        </select>
+                        <div class="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                            <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i> Parecer Técnico do Comitê
+                    </label>
+                    <textarea name="parecer" id="txt_parecer" required
+                        placeholder="Descreva aqui as ações tomadas e a conclusão do caso..."
+                        class="w-full p-6 border border-slate-200 rounded-3xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm h-56 bg-white font-medium shadow-sm transition-all"></textarea>
+                </div>
+            </form>
         </div>
-    </div>
-
-    <div class="space-y-3">
-        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-            <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i> Parecer Técnico do Comitê
-        </label>
-        <textarea name="parecer" id="txt_parecer" required
-            placeholder="Descreva aqui as ações tomadas e a conclusão do caso..."
-            class="w-full p-6 border border-slate-200 rounded-3xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm h-56 bg-white font-medium shadow-sm transition-all"></textarea>
-    </div>
-</form> 
-</div> 
         <div class="p-8 border-t border-slate-100 bg-slate-50/80 backdrop-blur-sm flex gap-4 shrink-0">
             <button type="submit" form="formTratativa" id="btn_salvar"
                 class="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 uppercase text-xs tracking-widest">
                 <i data-lucide="save" class="w-5 h-5"></i> Registrar Alterações
-            </button>
-            
-            <button type="button" onclick="imprimirDossie()"
-                class="flex-1 bg-white border border-slate-200 text-slate-600 px-6 py-5 rounded-2xl hover:bg-slate-100 hover:border-slate-300 transition-all flex items-center justify-center gap-2 shadow-sm font-bold uppercase text-[10px]">
-                <i data-lucide="printer" class="w-5 h-5"></i> Imprimir
             </button>
         </div>
     </div>
@@ -609,11 +786,141 @@
         const ID_EMPRESA_LOGADA = "{{ session.get('empresa_id', '') }}";
         const UNIDADE_FIXA = "{{ session.get('unidade', '') }}";
 
-        // Inicialização ao carregar a página
         window.addEventListener('DOMContentLoaded', () => {
             configurarFiltroUnidades();
             initCharts();
             filtrarBI();
+            // Inicia o sistema de notificações
+            carregarNotificacoes();
+            setInterval(carregarNotificacoes, 30000); // Atualiza a cada 30 segundos
+        });
+
+        // ==========================================
+        // SISTEMA DE NOTIFICAÇÕES - SÓ RECEBIDO
+        // ==========================================
+        let notificacoesAbertas = false;
+
+        function toggleNotificacoes() {
+            const dropdown = document.getElementById('notificacoesDropdown');
+            notificacoesAbertas = !notificacoesAbertas;
+            dropdown.classList.toggle('hidden');
+            if (!dropdown.classList.contains('hidden')) {
+                carregarNotificacoes();
+            }
+        }
+
+        async function carregarNotificacoes() {
+            try {
+                const res = await fetch('/api/notificacoes');
+                const data = await res.json();
+                
+                atualizarBadge(data.total || 0);
+                
+                if (notificacoesAbertas) {
+                    const lista = document.getElementById('listaNotificacoes');
+                    
+                    if (!data.denuncias || data.denuncias.length === 0) {
+                        lista.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">✨ Nenhuma notificação</div>';
+                        return;
+                    }
+                    
+                    let html = '';
+                    data.denuncias.forEach(d => {
+                        const dataFormatada = new Date(d.data.split(' ')[0].split('/').reverse().join('-')).toLocaleDateString('pt-BR');
+                        const statusClass = 'bg-orange-100 text-orange-600';
+                        
+                        html += `
+                            <div class="notificacao-item nao-lida" onclick="marcarComoLida('${d.protocolo}')">
+                                <div class="flex items-start gap-3">
+                                    <div class="bg-blue-600 bg-opacity-10 p-2 rounded-xl">
+                                        <i data-lucide="message-circle" class="w-4 h-4 text-blue-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-xs font-bold text-slate-800">${d.assunto || 'Nova denúncia'}</p>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span class="text-[10px] text-slate-500">${d.unidade}</span>
+                                            <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                            <span class="text-[10px] text-slate-500">${dataFormatada}</span>
+                                        </div>
+                                        <span class="inline-block mt-2 text-[8px] font-bold px-2 py-0.5 rounded-full ${statusClass}">${d.status}</span>
+                                    </div>
+                                    <span class="w-2 h-2 bg-blue-600 rounded-full mt-2"></span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    lista.innerHTML = html;
+                    lucide.createIcons();
+                }
+            } catch (err) {
+                console.error("Erro ao carregar notificações:", err);
+            }
+        }
+
+        async function marcarComoLida(protocolo) {
+            try {
+                await fetch(`/api/marcar-notificacao/${protocolo}`, { 
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+                    }
+                });
+                
+                const btn = document.querySelector(`button[data-protocolo="${protocolo}"]`);
+                if (btn) {
+                    prepararModal(btn);
+                }
+                
+                document.getElementById('notificacoesDropdown').classList.add('hidden');
+                notificacoesAbertas = false;
+                
+                setTimeout(() => carregarNotificacoes(), 500);
+                
+            } catch (err) {
+                console.error("Erro ao marcar como lida:", err);
+            }
+        }
+
+        function atualizarBadge(total) {
+            const badge = document.getElementById('notificacaoBadge');
+            if (total > 0) {
+                badge.innerText = total > 9 ? '9+' : total;
+                badge.classList.remove('hidden');
+                badge.classList.add('badge-pulse');
+            } else {
+                badge.classList.add('hidden');
+                badge.classList.remove('badge-pulse');
+            }
+        }
+
+        async function marcarTodasLidas() {
+            try {
+                await fetch('/api/marcar-todas-notificacoes', { 
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+                    }
+                });
+                
+                atualizarBadge(0);
+                if (notificacoesAbertas) {
+                    document.getElementById('listaNotificacoes').innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">✨ Nenhuma notificação</div>';
+                }
+            } catch (err) {
+                console.error("Erro ao marcar todas como lidas:", err);
+            }
+        }
+
+        // Fechar dropdown ao clicar fora
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('notificacoesDropdown');
+            const btnSino = document.querySelector('[onclick="toggleNotificacoes()"]');
+            
+            if (dropdown && btnSino && !dropdown.contains(e.target) && !btnSino.contains(e.target) && notificacoesAbertas) {
+                dropdown.classList.add('hidden');
+                notificacoesAbertas = false;
+            }
         });
 
         /**
@@ -631,7 +938,6 @@
 
             select.innerHTML = '<option value="">Todas Unidades</option>';
 
-            // Se o usuário for de unidade específica (Trava de Segurança)
             if (UNIDADE_FIXA && !["MASTER", "ADMIN"].includes(UNIDADE_FIXA.toUpperCase()) && UNIDADE_FIXA !== "") {
                 const opt = document.createElement('option');
                 opt.value = UNIDADE_FIXA;
@@ -642,7 +948,6 @@
                 const container = document.getElementById('containerUnidade');
                 if (container) container.style.display = 'none';
             } else {
-                // Preenchimento Admin
                 Array.from(unidadesExistentes).sort().forEach(u => {
                     const opt = document.createElement('option');
                     opt.value = u;
@@ -657,6 +962,36 @@
          */
         function toggleSupport() {
             document.getElementById('support-menu').classList.toggle('active');
+        }
+
+        window.addEventListener('click', function (e) {
+            const menu = document.getElementById('support-menu');
+            const btn = document.querySelector('[onclick="toggleSupport()"]');
+            if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.classList.remove('active');
+            }
+        });
+
+        function showHelpDetail(option) {
+            const main = document.getElementById('main-options');
+            const detail = document.getElementById('detail-view');
+            const text = document.getElementById('detail-text');
+
+            main.classList.add('hidden');
+            detail.classList.remove('hidden');
+
+            const tutorials = {
+                1: `<strong>Gestão de Credenciais:</strong><br><br>Para manter a segurança, altere sua senha periodicamente. Clique na engrenagem no canto superior direito, insira o novo usuário e senha. O sistema encerrará sua sessão para validar os novos dados.`,
+                2: `<strong>Filtros Avançados:</strong><br><br>Você pode combinar filtros de data, unidade e status. O campo de busca pesquisa simultaneamente em protocolos, relatos e categorias. Os gráficos se adaptam instantaneamente aos filtros aplicados.`,
+                3: `<strong>Fluxo de Tratativa:</strong><br><br>1. Localize o relato na tabela.<br>2. Clique em 'Tratar'.<br>3. Analise o relato e as evidências.<br>4. Atualize o status para 'Investigação'.<br>5. Após concluir, insira o parecer final e altere para 'Finalizada'.`,
+                4: `<strong>Relatórios PDF:</strong><br><br>O relatório de BI exporta exatamente o que você vê na tela de Dashboard. Aplique os filtros desejados antes de exportar para gerar um relatório específico de um período ou unidade.`
+            };
+            text.innerHTML = tutorials[option];
+        }
+
+        function backToSupportMain() {
+            document.getElementById('main-options').classList.remove('hidden');
+            document.getElementById('detail-view').classList.add('hidden');
         }
 
         function toggleView() {
@@ -674,7 +1009,7 @@
                 table.classList.add('hidden');
                 btn.innerHTML = '<i data-lucide="table" class="w-4 h-4"></i> EXIBIR TABELA';
                 btn.className = "bg-slate-800 text-white px-5 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2 hover:bg-slate-900 transition-all shadow-md";
-                filtrarBI(); // Atualiza gráficos ao abrir
+                filtrarBI();
             }
             lucide.createIcons();
         }
@@ -690,9 +1025,14 @@
         }
 
         // ==========================================
-        // FUNÇÃO PREPARAR MODAL COM BLOQUEIO PARA FINALIZADA
+        // FUNÇÃO PREPARAR MODAL COM PRÉ-VISUALIZAÇÃO
         // ==========================================
         function prepararModal(btn) {
+            if (!btn) {
+                console.error('Botão não encontrado');
+                return;
+            }
+
             const prot = btn.getAttribute('data-protocolo');
             const status = btn.getAttribute('data-status');
             const parecer = btn.getAttribute('data-parecer');
@@ -700,43 +1040,48 @@
             const relato = btn.getAttribute('data-relato');
             const email = btn.getAttribute('data-email');
             const dataReg = btn.getAttribute('data-data');
+            const anexo = btn.getAttribute('data-anexo');
+
+            console.log('Abrindo modal para protocolo:', prot);
+            console.log('Anexo:', anexo);
 
             document.getElementById('prot_titulo').innerText = prot;
             document.getElementById('input_prot').value = prot;
-            document.getElementById('input_email').value = email;
-            document.getElementById('txt_unidade').innerText = unidade;
-            document.getElementById('txt_data_registro').innerText = dataReg;
-            document.getElementById('txt_relato_box').innerText = relato;
+            document.getElementById('input_email').value = email || '';
+            document.getElementById('txt_unidade').innerText = unidade || '';
+            document.getElementById('txt_data_registro').innerText = dataReg || '';
+            document.getElementById('txt_relato_box').innerText = relato || '';
             document.getElementById('txt_parecer').value = (parecer === 'None' || parecer === '') ? '' : parecer;
+
+            // Tratamento do anexo para pré-visualização
+            const visualizador = document.getElementById('visualizador_imagem');
+            const imagemPreview = document.getElementById('imagem_preview');
+            
+            if (anexo && anexo !== 'None' && anexo !== 'Nenhum' && anexo.trim() !== '' && anexo.startsWith('data:image')) {
+                imagemPreview.src = anexo;
+                visualizador.classList.remove('hidden');
+            } else {
+                visualizador.classList.add('hidden');
+            }
 
             const select = document.getElementById('select_status');
             const btnSalvar = document.getElementById('btn_salvar');
             const txtParecer = document.getElementById('txt_parecer');
             const alertaDiv = document.getElementById('alerta_finalizada');
-            
-            console.log("🔒 Status recebido:", status);
-            
-            // 🔥 BLOQUEIO PARA PROCESSOS FINALIZADOS
+
+            // 🔥 BLOQUEIO PARA FINALIZADA
             if (status && status.includes('Finalizada')) {
-                console.log("✅ FINALIZADA - Aplicando bloqueio");
                 select.value = 'Finalizada';
                 select.disabled = true;
                 txtParecer.disabled = true;
                 btnSalvar.style.display = 'none';
-                
-                if (alertaDiv) {
-                    alertaDiv.classList.remove('hidden');
-                }
+                alertaDiv.classList.remove('hidden');
             } else {
                 select.disabled = false;
                 txtParecer.disabled = false;
                 btnSalvar.style.display = 'flex';
+                alertaDiv.classList.add('hidden');
                 
-                if (alertaDiv) {
-                    alertaDiv.classList.add('hidden');
-                }
-                
-                // Seta o status atual
                 if (status && status.includes('Investigação')) {
                     select.value = 'Investigação';
                 } else {
@@ -744,10 +1089,11 @@
                 }
             }
 
+            setTimeout(() => lucide.createIcons(), 50);
+
             document.getElementById('modal').classList.remove('translate-x-full');
             document.getElementById('overlay').classList.remove('hidden');
             document.body.classList.add('panel-open');
-            lucide.createIcons();
         }
 
         /**
@@ -765,7 +1111,6 @@
                 }
             };
 
-            // Gráfico de Status
             charts.status = new Chart(document.getElementById('chartStatus'), {
                 type: 'doughnut',
                 data: {
@@ -781,7 +1126,6 @@
                 options: { ...commonOptions, cutout: '72%' }
             });
 
-            // Gráfico de Categoria
             charts.categoria = new Chart(document.getElementById('chartCategoria'), {
                 type: 'pie',
                 data: {
@@ -796,7 +1140,6 @@
                 options: commonOptions
             });
 
-            // Gráfico de Unidades
             charts.unidade = new Chart(document.getElementById('chartUnidade'), {
                 type: 'bar',
                 data: {
@@ -833,7 +1176,6 @@
 
             let stats = { total: 0, recebido: 0, investigacao: 0, finalizado: 0, categorias: {}, unidades: {} };
 
-            // Parsers de Data
             const parseISO = (s) => s ? new Date(s.split('-')[0], s.split('-')[1] - 1, s.split('-')[2]).getTime() : null;
             const parseBR = (s) => {
                 if (!s) return null;
@@ -873,23 +1215,25 @@
                 }
             });
 
-            // Atualização de KPIs com animação simples
             document.getElementById('kpi-total').innerText = stats.total;
             document.getElementById('kpi-recebidos').innerText = stats.recebido;
             document.getElementById('kpi-investigacao').innerText = stats.investigacao;
             document.getElementById('kpi-finalizados').innerText = stats.finalizado;
 
-            // Update Charts
-            charts.status.data.datasets[0].data = [stats.recebido, stats.investigacao, stats.finalizado];
-            charts.status.update();
-
-            charts.categoria.data.labels = Object.keys(stats.categorias);
-            charts.categoria.data.datasets[0].data = Object.values(stats.categorias);
-            charts.categoria.update();
-
-            charts.unidade.data.labels = Object.keys(stats.unidades);
-            charts.unidade.data.datasets[0].data = Object.values(stats.unidades);
-            charts.unidade.update();
+            if (charts.status) {
+                charts.status.data.datasets[0].data = [stats.recebido, stats.investigacao, stats.finalizado];
+                charts.status.update();
+            }
+            if (charts.categoria) {
+                charts.categoria.data.labels = Object.keys(stats.categorias);
+                charts.categoria.data.datasets[0].data = Object.values(stats.categorias);
+                charts.categoria.update();
+            }
+            if (charts.unidade) {
+                charts.unidade.data.labels = Object.keys(stats.unidades);
+                charts.unidade.data.datasets[0].data = Object.values(stats.unidades);
+                charts.unidade.update();
+            }
         }
 
         /**
@@ -898,10 +1242,10 @@
         async function gerarPdfGraficos() {
             const { jsPDF } = window.jspdf;
             const area = document.getElementById('captureArea');
-            const nomeEmpresa = document.getElementById('labelNomeEmpresa').innerText.trim();
+            const nomeEmpresa = document.getElementById('labelNomeEmpresa').innerText.trim() || 'Sistema';
             const originalWidth = area.style.width;
 
-            area.style.width = "1400px"; // Força resolução para o print
+            area.style.width = "1400px";
 
             setTimeout(() => {
                 html2canvas(area, { scale: 2, useCORS: true, backgroundColor: "#f8fafc", borderRadius: 20 }).then(canvas => {
@@ -909,7 +1253,7 @@
                     const pageWidth = pdf.internal.pageSize.getWidth();
                     const pageHeight = pdf.internal.pageSize.getHeight();
 
-                    pdf.setFillColor(30, 41, 59); // Estilo header PDF
+                    pdf.setFillColor(30, 41, 59);
                     pdf.rect(0, 0, pageWidth, 25, 'F');
 
                     pdf.setFontSize(14);
@@ -923,7 +1267,6 @@
 
                     pdf.addImage(imgData, 'PNG', 15, 35, pdfWidth, pdfHeight);
 
-                    // Rodapé PDF
                     pdf.setFontSize(8);
                     pdf.setTextColor(150, 150, 150);
                     pdf.text(`Sistema CodeTecx Integridade - Gerado em ${new Date().toLocaleString('pt-BR')}`, 15, pageHeight - 10);
@@ -961,10 +1304,7 @@
             }
 
             try {
-                const response = await fetch('/alterar_acesso', { 
-                    method: 'POST', 
-                    body: fd
-                });
+                const response = await fetch('/alterar_acesso', { method: 'POST', body: fd });
                 
                 if (response.ok) {
                     document.getElementById('mensagem_modal').innerText = "✓ ACESSO ATUALIZADO! RECONECTANDO...";
@@ -991,33 +1331,6 @@
                 btn.disabled = false;
                 lucide.createIcons();
             }
-        }
-
-        function imprimirDossie() {
-            const prot = document.getElementById('input_prot').value;
-            if (prot) window.open(`${window.location.origin}/gestao/${prot}`, '_blank');
-        }
-
-        function showHelpDetail(option) {
-            const main = document.getElementById('main-options');
-            const detail = document.getElementById('detail-view');
-            const text = document.getElementById('detail-text');
-
-            main.classList.add('hidden');
-            detail.classList.remove('hidden');
-
-            const tutorials = {
-                1: `<strong>Gestão de Credenciais:</strong><br><br>Para manter a segurança, altere sua senha periodicamente. Clique na engrenagem no canto superior direito, insira o novo usuário e senha. O sistema encerrará sua sessão para validar os novos dados.`,
-                2: `<strong>Filtros Avançados:</strong><br><br>Você pode combinar filtros de data, unidade e status. O campo de busca pesquisa simultaneamente em protocolos, relatos e categorias. Os gráficos se adaptam instantaneamente aos filtros aplicados.`,
-                3: `<strong>Fluxo de Tratativa:</strong><br><br>1. Localize o relato na tabela.<br>2. Clique em 'Tratar'.<br>3. Analise o relato e as evidências.<br>4. Atualize o status para 'Investigação'.<br>5. Após concluir, insira o parecer final e altere para 'Finalizada'.`,
-                4: `<strong>Relatórios PDF:</strong><br><br>O relatório de BI exporta exatamente o que você vê na tela de Dashboard. Aplique os filtros desejados antes de exportar para gerar um relatório específico de um período ou unidade.`
-            };
-            text.innerHTML = tutorials[option];
-        }
-
-        function backToSupportMain() {
-            document.getElementById('main-options').classList.remove('hidden');
-            document.getElementById('detail-view').classList.add('hidden');
         }
     </script>
 </body>

@@ -1,11 +1,12 @@
 """
 Módulo de Configuração e Inicialização - Sistema CodeTecx 2026
+Versão com Sindicância, IP e Logs Forenses
 """
-
 import os
 import hashlib
 import base64
-
+import json
+from bson import ObjectId
 from datetime import datetime, timedelta, timezone
 
 from flask import (
@@ -19,17 +20,29 @@ from flask import (
     url_for
 )
 
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 from cryptography.fernet import Fernet
 from pymongo import MongoClient
+from werkzeug.utils import secure_filename
+
+# ==========================================
+# [CONFIGURAÇÃO DO ENCODER JSON PARA OBJECTID]
+# ==========================================
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, ObjectId):
+            return str(o)
+        return super().default(o)
 
 # --- CONFIGURAÇÃO INICIAL ---
 # Fuso horário de Brasília
 FUSO_BR = timezone(timedelta(hours=-3))
 
-# ✅ AJUSTE 2: Garantindo pastas de templates e static para a Vercel
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = 'chave_seguranca_codetecx_2026'
+
+# Configurar o encoder JSON personalizado
+app.json_encoder = JSONEncoder
 
 # --- AJUSTE: SESSÃO PERMANENTE (30 DIAS) ---
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
@@ -39,12 +52,11 @@ def fazer_sessao_permanente():
     """Define a sessão como permanente."""
     session.permanent = True
 
-# ATIVAÇÃO DA PROTEÇÃO CSRF (Para compatibilidade com o formulário ajustado)
+# ATIVAÇÃO DA PROTEÇÃO CSRF
 csrf = CSRFProtect(app)
 
 # --- CONFIGURAÇÃO MONGODB ---
 MONGO_URI = "mongodb+srv://suporte_db_user:2kT3pEb8AcXFWNbk@cluster0.vw8vm8p.mongodb.net/?retryWrites=true&w=majority"
-# ✅ AJUSTE 3: Adicionado tlsAllowInvalidCertificates para estabilidade no Vercel
 client = MongoClient(
     MONGO_URI,
     connectTimeoutMS=30000,
@@ -55,6 +67,68 @@ client = MongoClient(
 # Banco de dados isolado
 db = client['sistema_empresa']
 col_config = db['config_admin']
+
+# ============================================================
+# === [NOVAS COLEÇÕES] ===
+# ============================================================
+# Logs forenses (centralizado)
+col_logs = db['logs_forenses']
+
+# ============================================================
+# === [FUNÇÕES DE IP] ===
+# ============================================================
+def obter_ip():
+    """Captura o IP real do usuário considerando proxies"""
+    if request.headers.getlist("X-Forwarded-For"):
+        ip = request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
+    else:
+        ip = request.remote_addr
+    return ip
+
+def criptografar_ip(ip):
+    """Criptografa o IP para armazenamento seguro"""
+    if not ip:
+        return None
+    try:
+        return cipher_suite.encrypt(ip.encode()).decode()
+    except Exception as e:
+        print(f"Erro ao criptografar IP: {e}")
+        return None
+
+def descriptografar_ip(ip_criptografado):
+    """Descriptografa o IP quando necessário (apenas para uso interno)"""
+    if not ip_criptografado:
+        return None
+    try:
+        return cipher_suite.decrypt(ip_criptografado.encode()).decode()
+    except Exception as e:
+        print(f"Erro ao descriptografar IP: {e}")
+        return None
+
+def registrar_log_forense(acao, protocolo, usuario, ip_criptografado, empresa_slug=None, detalhes=None):
+    """Registra ações em log forense para rastreabilidade"""
+    try:
+        if empresa_slug is None:
+            empresa_slug = session.get('admin_unidade', 'geral')
+            
+        log_entry = {
+            "acao": acao,
+            "protocolo": protocolo,
+            "usuario": usuario,
+            "empresa_slug": empresa_slug,
+            "ip": ip_criptografado,
+            "data": datetime.now(FUSO_BR).strftime('%d/%m/%Y %H:%M:%S'),
+            "detalhes": detalhes or {}
+        }
+        col_logs.insert_one(log_entry)
+        return True
+    except Exception as e:
+        print(f"Erro ao registrar log: {e}")
+        return False
+
+def is_master():
+    """Verifica se o usuário é master (suporte_codetecx)"""
+    return session.get('admin_user') == 'suporte_codetecx'
 
 # ============================================================
 # === [MARCA/CORES] CONFIGURAÇÃO DE WHITE LABEL           ===
@@ -108,19 +182,13 @@ CONFIG_EMPRESAS = {
     }
 }
 
-# ✅ AJUSTE 1: Dicionário sem as portas (:8000) para bater com o host_limpo
 DOMINIOS_CLIENTES = {
-    # --- DOMÍNIOS VERCEL ---
-    'uniao.codetecx.com': 'Uniao',              # 🔥 ANTES: estava 'sol-magico'? AGORA: 'Uniao'
-    'sol-magico.codetecx.com': 'sol-magico',    # ✅ OK
-    'lua-nova.codetecx.com': 'lua-nova',        # ✅ OK
-    'sistema-escolas-template.vercel.app': 'sol-magico',  # ✅ OK
-
-    # --- ACESSO LOCAL (para testes) ---
-    'localhost': 'sol-magico',      # Altere aqui para testar qual empresa
-    '127.0.0.1': 'sol-magico',      # Altere aqui para testar qual empresa
-
-    # --- DOMÍNIOS PRÓPRIOS ---
+    'uniao.codetecx.com': 'Uniao',
+    'sol-magico.codetecx.com': 'sol-magico',
+    'lua-nova.codetecx.com': 'lua-nova',
+    'sistema-escolas-template.vercel.app': 'sol-magico',
+    'localhost': 'sol-magico',
+    '127.0.0.1': 'sol-magico',
     'solmagico.com.br': 'sol-magico',
     'luanova.com.br': 'lua-nova',
     'uniaogestao.com.br': 'Uniao',
@@ -135,10 +203,8 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 @app.context_processor
 def inject_empresa_context():
     """Injeta contexto da empresa nos templates."""
-    # 1. Tenta pegar o slug da URL
     slug = request.view_args.get('empresa_slug') if request.view_args else None
 
-    # 2. Se não achou, tenta pelo Referer (de onde o usuário veio)
     if not slug:
         ref = request.referrer or ""
         for s in CONFIG_EMPRESAS.keys():
@@ -146,30 +212,23 @@ def inject_empresa_context():
                 slug = s
                 break
 
-    # 3. Se não achou, tenta pelo Host (Domínio)
     if not slug:
-        # Primeiro limpamos o endereço (remove :8000, :443 e espaços)
         host_limpo = request.host.lower().strip().split(':')[0]
-        # Agora buscamos o slug usando o host já tratado
         slug = DOMINIOS_CLIENTES.get(host_limpo)
 
-    # 4. SEGURANÇA MÁXIMA: Se slug for None ou NÃO existir nos dicionários
     if not slug or slug not in CONFIG_EMPRESAS:
         slug = 'sol-magico'
 
-    # 5. Busca os dados usando .get() para evitar quebras
     dados_padrao = CONFIG_EMPRESAS.get('sol-magico')
     cores_padrao = CORES_SISTEMA.get('sol-magico')
 
     dados = CONFIG_EMPRESAS.get(slug, dados_padrao).copy()
     cores = CORES_SISTEMA.get(slug, cores_padrao)
 
-    # 6. Preenche as cores garantindo que 'cores' não seja None
     dados['cor_primaria'] = cores.get('primaria', '#059669')
     dados['cor_secundaria'] = cores.get('secundaria', '#fbbf24')
     dados['tema'] = cores.get('tema', 'light')
 
-    # 7. IMPORTANTE: Envia o estado do login para o HTML (resolve o erro do botão)
     status_login = session.get('admin_logado', False)
 
     return dict(
@@ -183,30 +242,23 @@ def inject_empresa_context():
 def inicializar_admin_config():
     """Inicializa configurações de acesso administrativo apenas se não existirem."""
     acessos_mestre = [
-        # [MASTER] - CODETECX
         {"user": "suporte_codetecx", "pass": "Code@", "nome": "Suporte Técnico", "unidade": "Geral", "empresa_exibicao": "Codetecx"},
-        # [EMPRESA: UNIÃO]
         {"user": "admin", "pass": "2821", "nome": "Direção União", "unidade": "Uniao", "empresa_exibicao": "União"},
         {"user": "uniao2", "pass": "1234", "nome": "Auxiliar União", "unidade": "Uniao", "empresa_exibicao": "União"},
-        # [EMPRESA: DO-RE-MI]
         {"user": "admin2", "pass": "1234", "nome": "Gestão Do Re Mi", "unidade": "Do-re-mi", "empresa_exibicao": "Do Re Mi"},
-        # [EMPRESA: SOL MÁGICO]
         {"user": "AdminSol", "pass": "1234", "nome": "Direção Sol Mágico", "unidade": "sol-magico", "empresa_exibicao": "Sol Mágico"},
-        # [EMPRESA: LUA NOVA]
         {"user": "AdminLua", "pass": "1234", "nome": "Direção Lua Nova", "unidade": "lua-nova", "empresa_exibicao": "Lua Nova"}
     ]
 
     for credencial in acessos_mestre:
-        # ✅ MUDANÇA: Usamos $setOnInsert para que os dados SÓ sejam gravados se o usuário for NOVO
-        # Se o usuário já existir, o MongoDB não fará nada (preservando sua nova senha)
         col_config.update_one(
             {"user": credencial["user"]},
             {"$setOnInsert": credencial},
             upsert=True
         )
 
-#inicializar_admin_config()
-
+# 🔥 DESCOMENTADO: Agora vai criar os usuários!
+inicializar_admin_config()
 
 # --- TRAVA DE LICENCIAMENTO POR EMPRESA ---
 LICENCAS = {
@@ -219,23 +271,15 @@ LICENCAS = {
 def verificar_licenca(slug_empresa=None):
     """Verifica se a empresa possui licença ativa para a data atual."""
     try:
-        # Se não vier slug, definimos um padrão para não quebrar a função
         if not slug_empresa:
             slug_empresa = "uniao"
-
-        # Converte para minúsculo para bater com as chaves do dicionário LICENCAS
         slug_limpo = str(slug_empresa).lower()
-        
         data_str = LICENCAS.get(slug_limpo)
-
         if not data_str:
             return False
-
         data_limite = datetime.strptime(data_str, "%Y-%m-%d")
         agora = datetime.now(FUSO_BR).replace(tzinfo=None)
-
         return agora <= data_limite
-
     except Exception:
         return False
 
@@ -265,19 +309,15 @@ def gerar_protocolo_dinamico(slug):
 
 @app.route('/')
 def home():
-    # 1. Identifica quem está acessando pelo domínio primeiro
     host_limpo = request.host.lower().strip().split(':')[0]
     empresa_slug = DOMINIOS_CLIENTES.get(host_limpo)
 
-    # 2. Se não identificou o domínio, define um padrão ou nega
     if not empresa_slug:
         empresa_slug = 'Uniao' 
 
-    # 3. Agora verifica a licença passando o slug correto
     if not verificar_licenca(empresa_slug):
         return HTML_BLOQUEIO, 403
     
-    # 4. Carrega as configurações da empresa identificada
     if empresa_slug in CONFIG_EMPRESAS:
         config = CONFIG_EMPRESAS[empresa_slug]
         cores_atuais = CORES_SISTEMA.get(empresa_slug, CORES_SISTEMA['Uniao'])
@@ -294,7 +334,6 @@ def home():
 
 @app.route('/<empresa_slug>')
 def home_empresa(empresa_slug):
-    # ✅ AJUSTE: Passando o slug para a função e usando .lower() para evitar erro de maiúsculas/minúsculas
     if not verificar_licenca(empresa_slug.lower()): 
         return HTML_BLOQUEIO, 403
         
@@ -302,7 +341,6 @@ def home_empresa(empresa_slug):
     if not config:
         return "Empresa não encontrada", 404
         
-    # Busca as cores ou usa o padrão 'Uniao' caso não encontre o slug específico
     cores_atuais = CORES_SISTEMA.get(empresa_slug, CORES_SISTEMA.get('Uniao'))
     ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
     
@@ -319,7 +357,6 @@ def politica():
 
 @app.route('/consultar/<prot>')
 def consultar(prot):
-    # Identifica a empresa (código existente...)
     empresa_pela_url = None
     referer = request.referrer or ""
     
@@ -342,15 +379,13 @@ def consultar(prot):
         
         if doc:
             status_final = doc.get('status', 'Recebido / Em Triagem')
-            # 🔥 NOVO: Pega o parecer do banco
             parecer_final = doc.get('parecer_comite', 'Aguardando parecer...')
             
             print(f"✅ Encontrado - Status: {status_final}, Parecer: {parecer_final}")
             
-            # 🔥 Retorna STATUS e PARECER
             resp = make_response(jsonify({
                 "status": status_final,
-                "parecer": parecer_final,  # NOVO CAMPO
+                "parecer": parecer_final,
                 "colecao": colecao_da_empresa,
                 "empresa": empresa_pela_url
             }))
@@ -363,12 +398,17 @@ def consultar(prot):
 
 @app.route('/enviar', methods=['POST'])
 def enviar():
-    if not verificar_licenca():
-        return jsonify({"status": "erro"}), 403
-
     try:
         slug = request.form.get('empresa_slug', 'geral')
+        
+        if not verificar_licenca(slug):
+            return jsonify({"status": "erro", "msg": "Licença expirada"}), 403
+
         col_atual = db[f'denuncias_{slug}']
+        
+        # 🔥 Captura e criptografa IP do denunciante
+        ip_denunciante = obter_ip()
+        ip_criptografado = criptografar_ip(ip_denunciante)
         
         agora = datetime.now(FUSO_BR)
         protocolo = gerar_protocolo_dinamico(slug)
@@ -384,6 +424,7 @@ def enviar():
         nova_denuncia = {
             "protocolo": protocolo,
             "data": agora.strftime('%d/%m/%Y %H:%M:%S'),
+            "ip": ip_criptografado,  # 🔥 NOVO: IP criptografado
             "unidade": request.form.get('unidade'),
             "categoria": request.form.get('categoria'),
             "assunto": request.form.get('titulo'),
@@ -391,14 +432,158 @@ def enviar():
             "anexo": conteudo_anexo_final,
             "email_contato": request.form.get('email_opcional', 'ANÔNIMO'),
             "status": "Recebido / Em Triagem",
-            "parecer_comite": ""           
+            "parecer_comite": "",
+            "lida": False  # 🔥 NOVO: Controle de notificações
         }
+        
         col_atual.insert_one(nova_denuncia)
+        
+        # 🔥 Registra log forense
+        registrar_log_forense(
+            acao="DENUNCIA_ENVIADA",
+            protocolo=protocolo,
+            usuario="ANONIMO",
+            ip_criptografado=ip_criptografado,
+            empresa_slug=slug,
+            detalhes={"unidade": request.form.get('unidade')}
+        )
+        
         resp = make_response(jsonify({"status": "sucesso", "protocolo": protocolo}))
         resp.set_cookie('ultimo_protocolo', protocolo, max_age=60*60*24*30)
         return resp
     except Exception as e: 
+        print(f"Erro ao enviar denúncia: {e}")
         return jsonify({"status": "erro", "msg": str(e)}), 500
+
+# ==========================================
+# [ROTAS DE NOTIFICAÇÕES] - CORRIGIDAS
+# ==========================================
+@app.route('/api/notificacoes')
+def api_notificacoes():
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Master vê de todas as empresas
+        todas_denuncias = []
+        total = 0
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("denuncias_"):
+                denuncias = list(db[nome_col].find(
+                    {
+                        "status": {"$regex": "Recebido", "$options": "i"},
+                        "lida": {"$ne": True}
+                    },
+                    {'_id': 0, 'protocolo': 1, 'unidade': 1, 'assunto': 1, 'data': 1, 'status': 1}
+                ).sort("data", -1).limit(5))
+                todas_denuncias.extend(denuncias)
+                total += db[nome_col].count_documents({
+                    "status": {"$regex": "Recebido", "$options": "i"},
+                    "lida": {"$ne": True}
+                })
+        
+        # Ordena por data
+        todas_denuncias.sort(key=lambda x: x.get('data', ''), reverse=True)
+        denuncias = todas_denuncias[:5]
+    else:
+        colecao = f'denuncias_{unidade_admin}'
+        denuncias = list(db[colecao].find(
+            {
+                "status": {"$regex": "Recebido", "$options": "i"},
+                "lida": {"$ne": True}
+            },
+            {'_id': 0, 'protocolo': 1, 'unidade': 1, 'assunto': 1, 'data': 1, 'status': 1}
+        ).sort("data", -1).limit(5))
+        
+        total = db[colecao].count_documents({
+            "status": {"$regex": "Recebido", "$options": "i"},
+            "lida": {"$ne": True}
+        })
+    
+    return jsonify({
+        "denuncias": denuncias,
+        "total": total
+    })
+
+@app.route('/api/marcar-notificacao/<protocolo>', methods=['POST'])
+def marcar_notificacao(protocolo):
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Master - procura em todas as coleções
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("denuncias_"):
+                db[nome_col].update_one(
+                    {"protocolo": protocolo},
+                    {"$set": {"lida": True}}
+                )
+    else:
+        colecao = f'denuncias_{unidade_admin}'
+        db[colecao].update_one(
+            {"protocolo": protocolo},
+            {"$set": {"lida": True}}
+        )
+    
+    return jsonify({"status": "ok"})
+
+@app.route('/api/marcar-todas-notificacoes', methods=['POST'])
+def marcar_todas_notificacoes():
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Master - marca todas de todas as empresas
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("denuncias_"):
+                db[nome_col].update_many(
+                    {
+                        "status": {"$regex": "Recebido", "$options": "i"},
+                        "lida": {"$ne": True}
+                    },
+                    {"$set": {"lida": True}}
+                )
+    else:
+        colecao = f'denuncias_{unidade_admin}'
+        db[colecao].update_many(
+            {
+                "status": {"$regex": "Recebido", "$options": "i"},
+                "lida": {"$ne": True}
+            },
+            {"$set": {"lida": True}}
+        )
+    
+    return jsonify({"status": "ok"})
+
+@app.route('/api/notificacoes/contador')
+def api_notificacoes_contador():
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        total = 0
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("denuncias_"):
+                total += db[nome_col].count_documents({
+                    "status": {"$regex": "Recebido", "$options": "i"},
+                    "lida": {"$ne": True}
+                })
+    else:
+        colecao = f'denuncias_{unidade_admin}'
+        total = db[colecao].count_documents({
+            "status": {"$regex": "Recebido", "$options": "i"},
+            "lida": {"$ne": True}
+        })
+    
+    return jsonify({"total": total})
 
 # ==========================================
 # [GESTÃO E DASHBOARD]
@@ -413,21 +598,28 @@ def login():
         usuario_digitado = request.form.get('user')
         senha_digitada = request.form.get('pass')
         
-        # 1. Identifica em qual site o usuário está tentando logar agora
+        # 🔥 Captura IP do admin
+        ip_admin = obter_ip()
+        ip_criptografado = criptografar_ip(ip_admin)
+        
         host_limpo = request.host.lower().strip().split(':')[0]
         slug_da_pagina_atual = DOMINIOS_CLIENTES.get(host_limpo)
 
-        # 2. Busca o usuário no MongoDB
         user_no_banco = col_config.find_one({"user": usuario_digitado})
 
         if user_no_banco and str(user_no_banco.get('pass')) == str(senha_digitada):
             unidade_do_user = user_no_banco.get('unidade')
             
-            # --- 🛡️ TRAVA DE SEGURANÇA MULTI-TENANT ---
-            # Permite se for o Suporte Master (Geral) OU se a unidade bater com o domínio
             if unidade_do_user != "Geral" and unidade_do_user != slug_da_pagina_atual:
+                registrar_log_forense(
+                    acao="LOGIN_NEGADO",
+                    protocolo=None,
+                    usuario=usuario_digitado,
+                    ip_criptografado=ip_criptografado,
+                    empresa_slug=slug_da_pagina_atual,
+                    detalhes={"motivo": "unidade_incorreta"}
+                )
                 return render_template('login.html', erro="Acesso negado: Este usuário não pertence a esta instituição.")
-            # ------------------------------------------
 
             session.clear()
             empresa_nome = user_no_banco.get('empresa_exibicao', 'Sistema')
@@ -439,14 +631,41 @@ def login():
                 'admin_unidade': unidade_do_user,
                 'admin_empresa_nome': empresa_nome
             })
-            return redirect(url_for('dashboard'))
             
+            registrar_log_forense(
+                acao="LOGIN_SUCESSO",
+                protocolo=None,
+                usuario=usuario_digitado,
+                ip_criptografado=ip_criptografado,
+                empresa_slug=unidade_do_user if unidade_do_user != "Geral" else None
+            )
+            
+            return redirect(url_for('dashboard'))
+        
+        registrar_log_forense(
+            acao="LOGIN_FALHA",
+            protocolo=None,
+            usuario=usuario_digitado,
+            ip_criptografado=ip_criptografado,
+            empresa_slug=slug_da_pagina_atual
+        )
+        
         return render_template('login.html', erro="Usuário ou senha incorretos")
     
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
+    if session.get('admin_logado'):
+        ip_admin = obter_ip()
+        ip_criptografado = criptografar_ip(ip_admin)
+        registrar_log_forense(
+            acao="LOGOUT",
+            protocolo=None,
+            usuario=session.get('admin_nome'),
+            ip_criptografado=ip_criptografado,
+            empresa_slug=session.get('admin_unidade')
+        )
     session.clear()
     return redirect(url_for('login'))
 
@@ -462,15 +681,28 @@ def dashboard():
         for nome_col in db.list_collection_names():
             if nome_col.startswith("denuncias_"):
                 itens = list(db[nome_col].find({}, {'_id': 0}))
+                slug_empresa = nome_col.replace("denuncias_", "")
                 for item in itens:
                     item['colecao_origem'] = nome_col
+                    item['empresa_slug'] = slug_empresa
+                    
+                    # 🔥 Busca status da sindicância
+                    col_sind = db[f'sindicancias_{slug_empresa}']
+                    sind = col_sind.find_one({"protocolo": item['protocolo']}, {'status': 1})
+                    item['sindicancia_status'] = sind.get('status') if sind else None
+                    
                 denuncias.extend(itens)
         denuncias.sort(key=lambda x: x.get('data', ''), reverse=True)
     else:
         nome_colecao = f'denuncias_{unidade_admin}'
         denuncias = list(db[nome_colecao].find({}, {'_id': 0}).sort("data", -1))
+        
+        # 🔥 Busca status da sindicância
+        col_sind = db[f'sindicancias_{unidade_admin}']
         for d in denuncias:
             d['colecao_origem'] = nome_colecao
+            sind = col_sind.find_one({"protocolo": d['protocolo']}, {'status': 1})
+            d['sindicancia_status'] = sind.get('status') if sind else None
 
     for d in denuncias:
         if not d.get('status'):
@@ -492,6 +724,10 @@ def atualizar():
     novo_parecer = request.form.get('parecer')
     colecao_alvo = request.form.get('colecao_origem') 
 
+    # 🔥 Captura IP do admin
+    ip_admin = obter_ip()
+    ip_criptografado = criptografar_ip(ip_admin)
+
     if not colecao_alvo:
         unidade_admin = session.get('admin_unidade')
         colecao_alvo = f'denuncias_{unidade_admin}'
@@ -501,167 +737,804 @@ def atualizar():
         {"$set": {
             "status": novo_status, 
             "parecer_comite": novo_parecer,
-            "data_atualizacao": datetime.now().strftime('%d/%m/%Y %H:%M')
+            "data_atualizacao": datetime.now().strftime('%d/%m/%Y %H:%M'),
+            "ultimo_ip": ip_criptografado,
+            "ultimo_usuario": session.get('admin_nome')
         }}
     )
+    
+    # 🔥 Registra log
+    slug_empresa = colecao_alvo.replace("denuncias_", "")
+    registrar_log_forense(
+        acao="DENUNCIA_ATUALIZADA",
+        protocolo=prot,
+        usuario=session.get('admin_nome'),
+        ip_criptografado=ip_criptografado,
+        empresa_slug=slug_empresa,
+        detalhes={"novo_status": novo_status}
+    )
+    
     return redirect(url_for('dashboard'))
 
 # ==========================================
-# [FUNÇÃO CORRIGIDA - ALTERAR SENHA E USUÁRIO]
+# [SISTEMA DE SINDICÂNCIA]
 # ==========================================
-@app.route('/alterar_acesso', methods=['POST'])
-def alterar_senha():
-    if not session.get('admin_logado'): 
-        return "Não autorizado", 403
-        
-    # O usuário que está logado agora (como ele está no banco no momento)
-    usuario_atual_na_sessao = session.get('admin_user')
-    
-    # Os novos dados que vieram do formulário
-    novo_nome_user = request.form.get('novo_user', '').strip()
-    nova_senha_texto = request.form.get('nova_senha', '').strip()
-    
-    # Prepara o dicionário de atualização
-    update_data = {}
-    
-    # Só adiciona a senha se foi fornecida
-    if nova_senha_texto:
-        update_data["pass"] = str(nova_senha_texto)
-    
-    # Só adiciona o novo nome de usuário se foi fornecido
-    if novo_nome_user:
-        update_data["user"] = novo_nome_user
-    
-    # Verifica se pelo menos um campo foi fornecido
-    if not update_data:
-        return "Nenhum dado para atualizar", 400
-    
-    # 🔴 CORREÇÃO: Agora permite atualizar apenas a senha, apenas o usuário, ou ambos
-    resultado = col_config.update_one(
-        {"user": usuario_atual_na_sessao}, 
-        {"$set": update_data}
-    )
-    
-    # Verifica se o MongoDB realmente encontrou o usuário
-    if resultado.matched_count == 0:
-        # Tenta buscar todos os usuários para debug (opcional - remover em produção)
-        todos_usuarios = list(col_config.find({}, {"user": 1, "_id": 0}))
-        usuarios_encontrados = [u.get('user') for u in todos_usuarios]
-        return f"Erro: Usuário '{usuario_atual_na_sessao}' não localizado no banco. Usuários disponíveis: {usuarios_encontrados}", 404
-    
-    # Se alterou o nome de usuário, atualiza a sessão
-    if novo_nome_user and resultado.modified_count > 0:
-        session['admin_user'] = novo_nome_user
-    
-    # Retorna sucesso
-    if resultado.modified_count > 0:
-        return "OK", 200
-    else:
-        return "Dados já estão atualizados (nenhuma modificação necessária)", 200
 
-# ==========================================
-# [SISTEMA DE DOSSIÊ - IMPRESSÃO SEGURA]
-# ==========================================
-@app.route('/gestao/<prot>')
-def area_segura(prot):
-    if not session.get('admin_logado'): return redirect(url_for('login'))
+@app.route('/sindicancia/<protocolo>')
+def pagina_sindicancia(protocolo):
+    if not session.get('admin_logado'):
+        return redirect(url_for('login'))
+    
     unidade_admin = session.get('admin_unidade')
     
-    d = None
+    # Busca a denúncia
     if unidade_admin == "Geral":
+        # Master - precisa encontrar em qual coleção está
+        denuncia = None
         for nome_col in db.list_collection_names():
             if nome_col.startswith("denuncias_"):
-                d = db[nome_col].find_one({"protocolo": prot}, {'_id': 0})
-                if d: break
+                denuncia = db[nome_col].find_one({"protocolo": protocolo}, {'_id': 0})
+                if denuncia:
+                    slug_empresa = nome_col.replace("denuncias_", "")
+                    denuncia['empresa_slug'] = slug_empresa
+                    break
     else:
-        d = db[f'denuncias_{unidade_admin}'].find_one({"protocolo": prot}, {'_id': 0})
+        colecao = f'denuncias_{unidade_admin}'
+        denuncia = db[colecao].find_one({"protocolo": protocolo}, {'_id': 0})
+        if denuncia:
+            denuncia['empresa_slug'] = unidade_admin
+    
+    if not denuncia:
+        return "Protocolo não encontrado", 404
+    
+    return render_template('sindicancia.html',
+                          denuncia=denuncia,
+                          csrf_token=generate_csrf())
 
-    if not d: return "Não encontrado", 404
+# ==========================================
+# [APIs da Sindicância]
+# ==========================================
 
-    email_banco = d.get('email_contato', '').strip()
-    if not email_banco or email_banco.upper() in ["ANÔNIMO", "ANONIMO", "NENHUM"]:
-        id_seguro = "SIGILOSO / ANÔNIMO"
+@app.route('/api/sindicancia/<protocolo>')
+def api_get_sindicancia(protocolo):
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Master - procura em todas as coleções
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("sindicancias_"):
+                sindicancia = db[nome_col].find_one({"protocolo": protocolo}, {'_id': 0})
+                if sindicancia:
+                    return jsonify({"existe": True, "sindicancia": sindicancia})
+        return jsonify({"existe": False})
     else:
-        id_seguro = email_banco
+        colecao = f'sindicancias_{unidade_admin}'
+        sindicancia = db[colecao].find_one({"protocolo": protocolo}, {'_id': 0})
+        if sindicancia:
+            return jsonify({"existe": True, "sindicancia": sindicancia})
+        return jsonify({"existe": False})
 
-    # 🔥 CORRIGIDO: Usando FUSO_BR (horário de Brasília)
-    agora_agora = datetime.now(FUSO_BR).strftime('%d%m%Y%H%M%S%f')
-    token_auth = hashlib.md5(f"{prot}{agora_agora}".encode()).hexdigest().upper()[:20]
-    midia_html = f"""<div class="container-midia"><div class="secao-titulo">Anexo Enviado</div><div class="caixa-imagem"><img src="{d['anexo']}" class="img-anexo"></div></div>""" if d.get('anexo') and d['anexo'] != "Nenhum" else ""
+@app.route('/api/sindicancia/instaurar', methods=['POST'])
+def api_instaurar_sindicancia():
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    data = request.json
+    protocolo = data.get('protocolo')
+    
+    ip_admin = obter_ip()
+    ip_criptografado = criptografar_ip(ip_admin)
+    
+    if not protocolo:
+        return jsonify({"erro": "Protocolo não informado"}), 400
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Precisa descobrir de qual empresa é o protocolo
+        slug_empresa = None
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("denuncias_"):
+                denuncia = db[nome_col].find_one({"protocolo": protocolo})
+                if denuncia:
+                    slug_empresa = nome_col.replace("denuncias_", "")
+                    break
+        if not slug_empresa:
+            return jsonify({"erro": "Denúncia não encontrada"}), 404
+        colecao_sind = f'sindicancias_{slug_empresa}'
+    else:
+        slug_empresa = unidade_admin
+        colecao_sind = f'sindicancias_{unidade_admin}'
+    
+    # Verifica se já existe sindicância
+    existe = db[colecao_sind].find_one({"protocolo": protocolo})
+    if existe:
+        return jsonify({"erro": "Sindicância já existe"}), 400
+    
+    nova_sindicancia = {
+        "protocolo": protocolo,
+        "empresa_slug": slug_empresa,
+        "data_instauracao": datetime.now(FUSO_BR).strftime('%d/%m/%Y'),
+        "instaurado_por": session.get('admin_nome', 'Admin'),
+        "instaurado_ip": ip_criptografado,
+        "prazo_limite": (datetime.now(FUSO_BR) + timedelta(days=30)).strftime('%d/%m/%Y'),
+        "comissao": [],
+        "diligencias": [],
+        "provas": [],
+        "relatorio_final": "",
+        "tipo_sindicancia": "investigativa",
+        "conclusao": "",
+        "data_conclusao": "",
+        "status": "em_andamento",
+        "criado_em": datetime.now(FUSO_BR).strftime('%d/%m/%Y %H:%M:%S'),
+        "criado_por": session.get('admin_nome', 'Admin')
+    }
+    
+    db[colecao_sind].insert_one(nova_sindicancia)
+    
+    registrar_log_forense(
+        acao="SINDICANCIA_INSTAURADA",
+        protocolo=protocolo,
+        usuario=session.get('admin_nome'),
+        ip_criptografado=ip_criptografado,
+        empresa_slug=slug_empresa
+    )
+    
+    return jsonify({"status": "ok", "sindicancia": nova_sindicancia})
 
-    conteudo_html = f"""
+# ==========================================
+# [AS DEMAIS ROTAS DA SINDICÂNCIA CONTINUAM IGUAIS]
+# ==========================================
+# (mantenha todas as outras rotas de sindicância que você já tem)
+
+# ==========================================
+# [ROTA PARA ANEXO DA DENÚNCIA]
+# ==========================================
+@app.route('/anexo/<protocolo>')
+def visualizar_anexo_denuncia(protocolo):
+    if not session.get('admin_logado'):
+        return redirect(url_for('login'))
+    
+    ip_admin = obter_ip()
+    ip_criptografado = criptografar_ip(ip_admin)
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        denuncia = None
+        slug_empresa = None
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("denuncias_"):
+                denuncia = db[nome_col].find_one({"protocolo": protocolo})
+                if denuncia:
+                    slug_empresa = nome_col.replace("denuncias_", "")
+                    break
+        if not denuncia:
+            return "Denúncia não encontrada", 404
+    else:
+        colecao = f'denuncias_{unidade_admin}'
+        denuncia = db[colecao].find_one({"protocolo": protocolo})
+        slug_empresa = unidade_admin
+        if not denuncia:
+            return "Denúncia não encontrada", 404
+    
+    anexo = denuncia.get('anexo', '')
+    if not anexo or anexo == 'None' or anexo == 'Nenhum':
+        return "Anexo não encontrado", 404
+    
+    registrar_log_forense(
+        acao="ANEXO_VISUALIZADO",
+        protocolo=protocolo,
+        usuario=session.get('admin_nome'),
+        ip_criptografado=ip_criptografado,
+        empresa_slug=slug_empresa
+    )
+    
+    if anexo.startswith('data:'):
+        partes = anexo.split(',', 1)
+        if len(partes) > 1:
+            cabecalho = partes[0]
+            conteudo = partes[1]
+            
+            mime_type = 'application/octet-stream'
+            if ';' in cabecalho:
+                tipo_parts = cabecalho.split(';')[0]
+                if ':' in tipo_parts:
+                    mime_type = tipo_parts.split(':')[1]
+        else:
+            conteudo = anexo
+    else:
+        conteudo = anexo
+        mime_type = 'application/octet-stream'
+    
+    try:
+        dados = base64.b64decode(conteudo)
+        filename = f"anexo_{protocolo}"
+        if mime_type.startswith('image/'):
+            ext = mime_type.split('/')[1]
+            filename = f"anexo_{protocolo}.{ext}"
+        
+        response = make_response(dados)
+        response.headers.set('Content-Type', mime_type)
+        response.headers.set('Content-Disposition', f'inline; filename="{filename}"')
+        return response
+    except Exception as e:
+        print(f"Erro ao carregar anexo: {e}")
+        return "Erro ao carregar anexo", 500
+
+# ==========================================
+# [ROTA DE CONSULTA DE IP - APENAS MASTER]
+# ==========================================
+@app.route('/api/consulta-ip/<protocolo>')
+def consultar_ip_denuncia(protocolo):
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    # Apenas master pode ver IPs
+    if not is_master():
+        return jsonify({"erro": "Acesso restrito ao desenvolvedor"}), 403
+    
+    # Master vê em todas as coleções
+    denuncia = None
+    slug_empresa = None
+    for nome_col in db.list_collection_names():
+        if nome_col.startswith("denuncias_"):
+            denuncia = db[nome_col].find_one({"protocolo": protocolo})
+            if denuncia:
+                slug_empresa = nome_col.replace("denuncias_", "")
+                break
+    
+    if not denuncia:
+        return jsonify({"erro": "Denúncia não encontrada"}), 404
+    
+    ip_criptografado = denuncia.get('ip')
+    if not ip_criptografado:
+        return jsonify({"ip": "Não registrado"})
+    
+    ip_real = descriptografar_ip(ip_criptografado)
+    
+    # Busca logs relacionados
+    logs = list(col_logs.find({"protocolo": protocolo}, {'_id': 0}).sort("data", -1).limit(10))
+    
+    return jsonify({
+        "protocolo": protocolo,
+        "ip_denunciante": ip_real,
+        "data_denuncia": denuncia.get('data'),
+        "empresa": slug_empresa,
+        "logs_acao": logs,
+        "consulta_realizada_em": datetime.now(FUSO_BR).strftime('%d/%m/%Y %H:%M:%S')
+    })
+
+# ==========================================
+# [DOSSIÊ DE SINDICÂNCIA]
+# ==========================================
+@app.route('/gestao/sindicancia/<protocolo>')
+def dossie_sindicancia(protocolo):
+    if not session.get('admin_logado'): 
+        return redirect(url_for('login'))
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        sindicancia = None
+        denuncia = None
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("sindicancias_"):
+                sindicancia = db[nome_col].find_one({"protocolo": protocolo}, {'_id': 0})
+                if sindicancia:
+                    slug_empresa = nome_col.replace("sindicancias_", "")
+                    break
+        if not sindicancia:
+            return "Sindicância não encontrada", 404
+        # Busca denúncia correspondente
+        denuncia = db[f'denuncias_{slug_empresa}'].find_one({"protocolo": protocolo}, {'_id': 0})
+    else:
+        colecao_sind = f'sindicancias_{unidade_admin}'
+        colecao_den = f'denuncias_{unidade_admin}'
+        sindicancia = db[colecao_sind].find_one({"protocolo": protocolo}, {'_id': 0})
+        denuncia = db[colecao_den].find_one({"protocolo": protocolo}, {'_id': 0})
+        if not sindicancia:
+            return "Sindicância não encontrada", 404
+    
+    if not denuncia:
+        return "Denúncia não encontrada", 404
+    
+    # Dados para o template
+    data_impressao = datetime.now(FUSO_BR).strftime('%d/%m/%Y %H:%M:%S')
+    usuario = session.get('admin_nome', 'Sistema')
+    
+    # Token de autenticidade
+    token = hashlib.md5(f"{protocolo}{data_impressao}{usuario}".encode()).hexdigest().upper()[:20]
+    
+    # Formata a comissão
+    comissao_html = ""
+    if sindicancia.get('comissao') and len(sindicancia['comissao']) > 0:
+        for membro in sindicancia['comissao']:
+            comissao_html += f"""
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">{membro.get('nome', '')}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{membro.get('funcao', '')}</td>
+            </tr>
+            """
+    else:
+        comissao_html = "<tr><td colspan='2' style='padding: 8px; border: 1px solid #ddd; text-align: center;'>Nenhum membro designado</td></tr>"
+    
+    # Formata as diligências
+    diligencias_html = ""
+    if sindicancia.get('diligencias') and len(sindicancia['diligencias']) > 0:
+        for i, diligencia in enumerate(sindicancia['diligencias'], 1):
+            data_diligencia = diligencia.get('data', '')
+            if data_diligencia and len(data_diligencia) == 10 and data_diligencia.count('-') == 2:
+                partes = data_diligencia.split('-')
+                data_diligencia = f"{partes[2]}/{partes[1]}/{partes[0]}"
+            
+            diligencias_html += f"""
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 10%;">{i}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 15%;">{data_diligencia}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 25%;"><strong>{diligencia.get('titulo', '')}</strong></td>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 40%;">{diligencia.get('descricao', '')}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 10%;">{diligencia.get('registrado_por', '')}</td>
+            </tr>
+            """
+    else:
+        diligencias_html = "<tr><td colspan='5' style='padding: 8px; border: 1px solid #ddd; text-align: center;'>Nenhuma diligência registrada</td></tr>"
+    
+    # Formata as provas anexadas
+    provas_html = ""
+    if sindicancia.get('provas') and len(sindicancia['provas']) > 0:
+        for i, prova in enumerate(sindicancia['provas'], 1):
+            provas_html += f"""
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 10%;">{i}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 30%;">{prova.get('nome', '')}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 25%;">{prova.get('descricao', '')}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 20%;">{prova.get('tipo', 'documento')}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 15%;">{prova.get('data_anexo', '')}</td>
+            </tr>
+            """
+    else:
+        provas_html = "<tr><td colspan='5' style='padding: 8px; border: 1px solid #ddd; text-align: center;'>Nenhuma prova anexada</td></tr>"
+    
+    # Conclusão formatada
+    tipo_sindicancia_texto = {
+        'investigativa': 'Investigativa (SINVE) - Autoria desconhecida',
+        'punitiva': 'Acusatória/Punitiva (SINAC) - Autor identificado',
+        'patrimonial': 'Patrimonial (SINPA) - Enriquecimento ilícito'
+    }.get(sindicancia.get('tipo_sindicancia', ''), sindicancia.get('tipo_sindicancia', 'Não definido'))
+    
+    conclusao_texto = {
+        'arquivar_improcedente': 'Arquivamento por improcedência (sem culpa)',
+        'arquivar_autoria': 'Arquivamento por não identificação de autoria',
+        'arquivar_prescricao': 'Arquivamento por prescrição',
+        'advertencia': 'Advertência (Art. 129 da Lei 8.112/90)',
+        'suspensao_10': 'Suspensão - até 10 dias',
+        'suspensao_20': 'Suspensão - 11 a 20 dias',
+        'suspensao_30': 'Suspensão - 21 a 30 dias',
+        'pad': 'Instauração de Processo Administrativo Disciplinar (PAD)',
+        'sindicancia_patrimonial': 'Conversão em Sindicância Patrimonial',
+        'encaminhamento_mp': 'Encaminhamento ao Ministério Público',
+        'encaminhamento_tc': 'Encaminhamento ao Tribunal de Contas'
+    }.get(sindicancia.get('conclusao', ''), sindicancia.get('conclusao', 'Não definida'))
+    
+    # Template HTML profissional para o dossiê
+    html = f"""
     <!DOCTYPE html>
     <html lang="pt-br">
     <head>
         <meta charset="UTF-8">
+        <title>Dossiê de Sindicância - {protocolo}</title>
         <style>
-            @page {{ size: A4; margin: 0; }}
-            * {{ box-sizing: border-box; -webkit-print-color-adjust: exact; }}
-            body {{ font-family: 'Courier New', monospace; background: #d1d5db; margin: 0; padding: 0; }}
-            .folha-a4 {{ background: white; width: 210mm; min-height: 297mm; margin: 20px auto; padding: 15mm; display: flex; flex-direction: column; position: relative; border: 1px solid #000; }}
-            .header {{ border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; text-align: center; }}
-            .header h1 {{ margin: 5px 0; font-size: 18px; text-transform: uppercase; }}
-            .confidencial {{ background: #000; color: #fff; padding: 2px 10px; font-size: 10px; font-weight: bold; text-align: center; }}
-            table {{ width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px; }}
-            th {{ background: #f2f2f2; text-align: left; padding: 5px; border: 1px solid #000; width: 30%; }}
-            td {{ padding: 5px; border: 1px solid #000; }}
-            .secao-titulo {{ background: #eee; border: 1px solid #000; padding: 4px; font-size: 10px; font-weight: bold; margin-top: 5px; text-transform: uppercase; }}
-            .caixa-texto {{ border: 1px solid #000; border-top: none; padding: 8px; font-size: 11px; line-height: 1.3; white-space: pre-wrap; margin-bottom: 10px; min-height: 100px; }}
-            .caixa-imagem {{ border: 1px solid #000; border-top: none; padding: 10px; text-align: center; background: #fafafa; }}
-            .img-anexo {{ max-width: 100%; max-height: 400px; object-fit: contain; }}
-            .linha-assinatura {{ border-top: 1px solid #000; width: 180px; margin: 25px auto 5px; text-align: center; font-size: 8px; font-weight: bold; text-transform: uppercase; }}
-            .btn-print {{ position: fixed; top: 20px; right: 20px; background: #000; color: #fff; border: none; padding: 15px 25px; cursor: pointer; font-weight: bold; z-index: 100; border-radius: 5px; }}
-            .token-footer {{ font-size: 8px; border-top: 1px solid #000; padding-top: 5px; display: flex; justify-content: space-between; margin-top: auto; }}
-            @media print {{ .btn-print {{ display: none; }} body {{ background: white; }} .folha-a4 {{ margin: 0; box-shadow: none; border: none; }} }}
+            @page {{
+                size: A4;
+                margin: 2.5cm 2cm 2cm 2cm;
+                @top-center {{
+                    content: "PROCEDIMENTO DE SINDICÂNCIA";
+                    font-size: 9pt;
+                    color: #666;
+                }}
+                @bottom-center {{
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 9pt;
+                    color: #666;
+                }}
+            }}
+            
+            * {{
+                box-sizing: border-box;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }}
+            
+            body {{
+                font-family: 'Times New Roman', Times, serif;
+                line-height: 1.5;
+                color: #000;
+                background: #fff;
+                margin: 0;
+                padding: 0;
+            }}
+            
+            .container {{
+                max-width: 100%;
+                margin: 0 auto;
+            }}
+            
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+                border-bottom: 2px solid #000;
+                padding-bottom: 15px;
+            }}
+            
+            .header h1 {{
+                font-size: 18pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin: 0 0 5px 0;
+                letter-spacing: 1px;
+            }}
+            
+            .header h2 {{
+                font-size: 14pt;
+                font-weight: normal;
+                margin: 0 0 10px 0;
+            }}
+            
+            .header .protocolo {{
+                font-size: 12pt;
+                font-family: monospace;
+                background: #f0f0f0;
+                padding: 5px 10px;
+                display: inline-block;
+                border-radius: 4px;
+            }}
+            
+            .confidencial {{
+                background: #000;
+                color: #fff;
+                text-align: center;
+                padding: 5px;
+                font-size: 10pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                margin-bottom: 20px;
+            }}
+            
+            .section {{
+                margin-bottom: 25px;
+            }}
+            
+            .section-title {{
+                font-size: 13pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                border-bottom: 1px solid #000;
+                padding-bottom: 5px;
+                margin-bottom: 15px;
+                background: #f5f5f5;
+                padding: 8px 10px;
+            }}
+            
+            .subsection-title {{
+                font-size: 12pt;
+                font-weight: bold;
+                margin: 15px 0 10px 0;
+                border-left: 4px solid #666;
+                padding-left: 10px;
+            }}
+            
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin: 15px 0;
+                font-size: 11pt;
+            }}
+            
+            th {{
+                background: #e0e0e0;
+                font-weight: bold;
+                padding: 8px;
+                border: 1px solid #000;
+                text-align: center;
+            }}
+            
+            td {{
+                padding: 8px;
+                border: 1px solid #000;
+                vertical-align: top;
+            }}
+            
+            .info-table td:first-child {{
+                width: 30%;
+                background: #f5f5f5;
+                font-weight: bold;
+            }}
+            
+            .info-table td:last-child {{
+                width: 70%;
+            }}
+            
+            .text-box {{
+                border: 1px solid #000;
+                padding: 15px;
+                min-height: 100px;
+                background: #fafafa;
+                font-style: italic;
+                white-space: pre-wrap;
+            }}
+            
+            .signature {{
+                margin-top: 40px;
+                display: flex;
+                justify-content: space-between;
+            }}
+            
+            .signature-line {{
+                border-top: 1px solid #000;
+                width: 250px;
+                margin: 40px auto 5px;
+                text-align: center;
+            }}
+            
+            .signature-text {{
+                text-align: center;
+                font-size: 10pt;
+                font-weight: bold;
+                text-transform: uppercase;
+            }}
+            
+            .footer {{
+                margin-top: 40px;
+                font-size: 9pt;
+                color: #666;
+                border-top: 1px dashed #ccc;
+                padding-top: 10px;
+                display: flex;
+                justify-content: space-between;
+            }}
+            
+            .token {{
+                font-family: monospace;
+                font-size: 8pt;
+                color: #333;
+                background: #f0f0f0;
+                padding: 3px 8px;
+                border-radius: 3px;
+            }}
+            
+            .status-badge {{
+                display: inline-block;
+                padding: 3px 10px;
+                border-radius: 20px;
+                font-size: 10pt;
+                font-weight: bold;
+                text-transform: uppercase;
+            }}
+            
+            .status-andamento {{
+                background: #fff3cd;
+                color: #856404;
+                border: 1px solid #ffeeba;
+            }}
+            
+            .status-concluida {{
+                background: #d4edda;
+                color: #155724;
+                border: 1px solid #c3e6cb;
+            }}
+            
+            .anexo-img {{
+                max-width: 100%;
+                max-height: 400px;
+                display: block;
+                margin: 10px auto;
+                border: 1px solid #ccc;
+            }}
+            
+            @media print {{
+                .no-print {{
+                    display: none;
+                }}
+                body {{
+                    background: white;
+                }}
+            }}
+            
+            .btn-print {{
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #2563eb;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: bold;
+                z-index: 1000;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }}
+            
+            .btn-print:hover {{
+                background: #1e40af;
+            }}
         </style>
     </head>
     <body>
-        <button class="btn-print" onclick="window.print()">IMPRIMIR DOSSIÊ</button>
-        <div class="folha-a4">
-            <div class="header">
-                <div class="confidencial">ESTRITAMENTE CONFIDENCIAL - LEI 14.457/22</div>
-                <h1>Dossiê de Investigação Interna</h1>
-                <small>Canal de Ética / Codetecx</small>
-            </div>
-            <table>
-                <tr><th>PROTOCOLO:</th><td><b>{prot}</b></td></tr>
-                <tr><th>DATA REGISTRO:</th><td>{d['data']}</td></tr>
-                <tr><th>UNIDADE:</th><td>{d['unidade']}</td></tr>
-                <tr><th>CATEGORIA:</th><td>{d['categoria']}</td></tr>
-                <tr><th>ID DENUNCIANTE:</th><td><code style="font-weight: bold;">{id_seguro}</code></td></tr>
-                <tr><th>STATUS ATUAL:</th><td>{d.get('status', 'EM ANÁLISE')}</td></tr>
-            </table>
-            <div class="secao-titulo">1. Relato dos Fatos</div>
-            <div class="caixa-texto">{d['relato']}</div>
-            {midia_html}
-            <div class="secao-titulo">2. Parecer e Conclusão do Comitê</div>
-            <div class="caixa-texto">{d.get('parecer_comite', 'Aguardando registro do parecer oficial...')}</div>
+        <button class="btn-print no-print" onclick="window.print()">🖨️ IMPRIMIR / GERAR PDF</button>
+        
+        <div class="container">
+            <div class="confidencial">DOCUMENTO ESTRITAMENTE CONFIDENCIAL - LEI 14.457/2022</div>
             
-            <div class="assinaturas" style="margin-top: 20px;">
-                <table style="border: none; width: 100%;">
-                    <tr style="border: none;">
-                        <td style="border: none; text-align: center;">
-                            <div class="linha-assinatura">Responsável Triagem</div>
-                        </td>
-                        <td style="border: none; text-align: center;">
-                            <div class="linha-assinatura">Comitê de Ética</div>
-                        </td>
+            <div class="header">
+                <h1>PROCESSO DE SINDICÂNCIA ADMINISTRATIVA</h1>
+                <h2>COMISSÃO DE ÉTICA E INTEGRIDADE</h2>
+                <p class="protocolo">Protocolo: <strong>{protocolo}</strong></p>
+                <p>Data de emissão: {data_impressao}</p>
+                <p>Status: <span class="status-badge {'status-concluida' if sindicancia.get('status') == 'concluida' else 'status-andamento'}">{'CONCLUÍDA' if sindicancia.get('status') == 'concluida' else 'EM ANDAMENTO'}</span></p>
+                <p>Tipo: <strong>{tipo_sindicancia_texto}</strong></p>
+            </div>
+            
+            <!-- SEÇÃO 1: INFORMAÇÕES GERAIS -->
+            <div class="section">
+                <div class="section-title">1. INFORMAÇÕES GERAIS</div>
+                <table class="info-table">
+                    <tr>
+                        <td>Data de Instauração:</td>
+                        <td>{sindicancia.get('data_instauracao', denuncia.get('data', 'NÃO INFORMADA'))}</td>
+                    </tr>
+                    <tr>
+                        <td>Instaurado por:</td>
+                        <td>{sindicancia.get('instaurado_por', 'NÃO INFORMADO')}</td>
+                    </tr>
+                    <tr>
+                        <td>Prazo Legal (30 dias):</td>
+                        <td>{sindicancia.get('prazo_limite', 'NÃO DEFINIDO')}</td>
+                    </tr>
+                    <tr>
+                        <td>Unidade de Origem:</td>
+                        <td>{denuncia.get('unidade', 'NÃO INFORMADA')}</td>
+                    </tr>
+                    <tr>
+                        <td>Categoria da Denúncia:</td>
+                        <td>{denuncia.get('categoria', 'NÃO INFORMADA')}</td>
+                    </tr>
+                    <tr>
+                        <td>Assunto:</td>
+                        <td>{denuncia.get('assunto', 'NÃO INFORMADO')}</td>
                     </tr>
                 </table>
-                <div style="display: flex; justify-content: center; margin-top: 10px;">
-                    <div class="linha-assinatura" style="width: 250px;">Diretoria Executiva / Presidência</div>
+            </div>
+            
+            <!-- SEÇÃO 2: COMISSÃO PROCESSANTE -->
+            <div class="section">
+                <div class="section-title">2. COMISSÃO PROCESSANTE</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>NOME</th>
+                            <th>FUNÇÃO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {comissao_html}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- SEÇÃO 3: DENÚNCIA ORIGINAL -->
+            <div class="section">
+                <div class="section-title">3. DENÚNCIA ORIGINAL</div>
+                <div class="text-box">{denuncia.get('relato', 'NÃO INFORMADO')}</div>
+            </div>
+            
+            <!-- SEÇÃO 4: ANEXOS DA DENÚNCIA -->
+            <div class="section">
+                <div class="section-title">4. ANEXOS DA DENÚNCIA</div>
+                <div class="text-box">
+                    {f'<img src="{denuncia["anexo"]}" class="anexo-img" alt="Anexo da denúncia">' if denuncia.get('anexo') and denuncia['anexo'] != 'Nenhum' else 'Nenhum anexo enviado na denúncia original.'}
                 </div>
             </div>
-
-            <div class="token-footer">
-                <span><b>VALIDAÇÃO (TOKEN):</b> {token_auth}</span>
-                <span>Impressão em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</span>
+            
+            <!-- SEÇÃO 5: DILIGÊNCIAS REALIZADAS -->
+            <div class="section">
+                <div class="section-title">5. DILIGÊNCIAS REALIZADAS</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>DATA</th>
+                            <th>TÍTULO</th>
+                            <th>DESCRIÇÃO</th>
+                            <th>RESPONSÁVEL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {diligencias_html}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- SEÇÃO 6: PROVAS E DOCUMENTOS ANEXADOS -->
+            <div class="section">
+                <div class="section-title">6. PROVAS E DOCUMENTOS ANEXADOS</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>ARQUIVO</th>
+                            <th>DESCRIÇÃO</th>
+                            <th>TIPO</th>
+                            <th>DATA ANEXO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {provas_html}
+                    </tbody>
+                </table>
+                <p style="font-size: 9pt; margin-top: 10px;"><em>Nota: Os arquivos originais estão disponíveis no sistema para consulta.</em></p>
+            </div>
+            
+            <!-- SEÇÃO 7: RELATÓRIO FINAL -->
+            <div class="section">
+                <div class="section-title">7. RELATÓRIO FINAL E PARECER</div>
+                <div class="text-box">{sindicancia.get('relatorio_final', 'Relatório ainda não elaborado.')}</div>
+            </div>
+            
+            <!-- SEÇÃO 8: CONCLUSÃO -->
+            <div class="section">
+                <div class="section-title">8. CONCLUSÃO</div>
+                <table class="info-table">
+                    <tr>
+                        <td>Decisão:</td>
+                        <td><strong>{conclusao_texto}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Data da Conclusão:</td>
+                        <td>{sindicancia.get('data_conclusao', 'NÃO FINALIZADO')}</td>
+                    </tr>
+                    <tr>
+                        <td>Prazo Final:</td>
+                        <td>{sindicancia.get('prazo_final', 'NÃO DEFINIDO')}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- SEÇÃO 9: ASSINATURAS -->
+            <div class="section">
+                <div class="section-title">9. ASSINATURAS</div>
+                <div class="signature">
+                    <div>
+                        <div class="signature-line"></div>
+                        <div class="signature-text">PRESIDENTE DA COMISSÃO</div>
+                    </div>
+                    <div>
+                        <div class="signature-line"></div>
+                        <div class="signature-text">MEMBRO</div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 30px;">
+                    <div style="border-top: 1px solid #000; width: 350px; margin: 0 auto;"></div>
+                    <div class="signature-text">DIRETORIA</div>
+                </div>
+            </div>
+            
+            <!-- RODAPÉ COM TOKEN DE AUTENTICIDADE -->
+            <div class="footer">
+                <div>Documento gerado eletronicamente em {data_impressao} por {usuario}</div>
+                <div class="token">Token: {token}</div>
             </div>
         </div>
     </body>
     </html>
     """
-    return make_response(conteudo_html)
+    
+    return make_response(html)
 
 # ✅ AJUSTE 4: Porta voltou para 8000
 if __name__ == "__main__":

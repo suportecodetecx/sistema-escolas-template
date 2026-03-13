@@ -1,5 +1,62 @@
+# Python
 __pycache__/
+*.py[cod]
 *.pyc
+*.pyo
+*.pyd
+.python-version
 venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+dist/
+build/
+
+# Ambiente virtual
+venv/
+env/
+
+# Variáveis de ambiente
 .env
+.env.local
+.env.*.local
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# MongoDB
+*.mongodb
+dump/
+
+# Logs
+*.log
+logs/
+logs_forenses/
+cookies.txt
+
+# Arquivos de configuração local
+config_local.json
+*.local
+instance/
+
+# Banco de dados SQLite (se usar)
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads
+uploads/
+temp/
+
+# Testes
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
