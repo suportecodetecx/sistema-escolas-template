@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Google Verification -->
+    <meta name="google-site-verification" content="3ooA9cT1o31NmLWlRbeH6Yd43rpiC-ZQZTJvb4iUEv8" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon-gato-sem-fundo.png') }}">
+    
     <title>CODETECX | Procedimento de Sindicância</title>
     
     <!-- Tailwind CSS -->
@@ -424,7 +431,7 @@
                             <p class="text-sm text-slate-600 mt-1 p-2 bg-slate-50 rounded-xl">{{ denuncia.relato if denuncia else '---' }}</p>
                         </div>
                         
-                        <!-- Link para anexo da denúncia original -->
+                        <!-- Link para anexo da denúncia original - MELHORADO -->
                         {% if denuncia and denuncia.anexo and denuncia.anexo != 'None' and denuncia.anexo != 'Nenhum' %}
                         <div class="mt-4">
                             <p class="text-[10px] font-black text-slate-400 uppercase mb-2">Documento Anexado</p>
@@ -511,7 +518,7 @@
                     </div>
                 </div>
 
-                <!-- Card: Provas e Documentos -->
+                <!-- Card: Provas e Documentos - MELHORADO COM INPUT FILE ESTILIZADO -->
                 <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -531,12 +538,31 @@
                         </div>
                     </div>
 
-                    <!-- Formulário para nova prova -->
+                    <!-- Formulário para nova prova - MELHORADO COM ESTILIZAÇÃO -->
                     <div id="formProva" class="hidden mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                        <input type="file" id="provaArquivo" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" 
-                               class="w-full p-3 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        
+                        <!-- Input file estilizado -->
+                        <div class="relative mb-2">
+                            <input type="file" id="provaArquivo" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" 
+                                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                                   onchange="document.getElementById('file-name').innerText = this.files[0]?.name || 'Nenhum arquivo selecionado'">
+                            
+                            <div class="bg-white border border-blue-200 rounded-xl p-3 flex items-center justify-between hover:border-blue-500 transition-all">
+                                <span class="text-sm text-slate-600 flex items-center gap-2">
+                                    <i data-lucide="file-text" class="w-4 h-4 text-blue-500"></i>
+                                    <span id="file-name">Nenhum arquivo selecionado</span>
+                                </span>
+                                <span class="bg-blue-100 text-blue-700 text-xs font-bold px-4 py-2 rounded-lg">
+                                    ESCOLHER
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Descrição da prova -->
                         <input type="text" id="provaDescricao" placeholder="Descrição da prova (ex: Contrato, E-mail, Foto...)" 
                                class="w-full p-3 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        
+                        <!-- Tipo da prova -->
                         <select id="provaTipo" class="w-full p-3 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none">
                             <option value="documento">Documento</option>
                             <option value="imagem">Imagem/Foto</option>
@@ -545,9 +571,77 @@
                             <option value="depoimento">Depoimento</option>
                             <option value="outro">Outro</option>
                         </select>
+                        
+                        <!-- Botões -->
                         <div class="flex gap-2">
                             <button onclick="salvarProva()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-700">ANEXAR PROVA</button>
                             <button onclick="cancelarFormProva()" class="flex-1 bg-slate-200 text-slate-600 py-3 rounded-xl text-xs font-bold hover:bg-slate-300">CANCELAR</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODAL PARA REMOVER PROVA - NOVO -->
+                <div id="modalRemoverProva" class="modal-overlay">
+                    <div class="confirm-modal">
+                        <div class="confirm-header" style="background: linear-gradient(135deg, #f97316, #fb923c);">
+                            <i data-lucide="file-minus" class="w-12 h-12 mx-auto"></i>
+                            <h2 class="text-xl font-bold">REMOVER PROVA</h2>
+                        </div>
+                        
+                        <div class="confirm-body">
+                            <div class="text-center">
+                                <p class="text-lg text-slate-600 mb-3">Remover esta prova?</p>
+                                <p class="text-sm text-slate-500" id="provaRemoverDescricao"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="confirm-footer">
+                            <button onclick="fecharModalRemoverProva()" class="btn-cancel">CANCELAR</button>
+                            <button onclick="confirmarRemoverProva()" class="btn-confirm" style="background: #f97316;">REMOVER</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODAL PARA REMOVER DILIGÊNCIA - NOVO -->
+                <div id="modalRemoverDiligencia" class="modal-overlay">
+                    <div class="confirm-modal">
+                        <div class="confirm-header" style="background: linear-gradient(135deg, #f97316, #fb923c);">
+                            <i data-lucide="clipboard-x" class="w-12 h-12 mx-auto"></i>
+                            <h2 class="text-xl font-bold">REMOVER DILIGÊNCIA</h2>
+                        </div>
+                        
+                        <div class="confirm-body">
+                            <div class="text-center">
+                                <p class="text-lg text-slate-600 mb-3">Remover esta diligência?</p>
+                                <p class="text-sm text-slate-500" id="diligenciaRemoverTitulo"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="confirm-footer">
+                            <button onclick="fecharModalRemoverDiligencia()" class="btn-cancel">CANCELAR</button>
+                            <button onclick="confirmarRemoverDiligencia()" class="btn-confirm" style="background: #f97316;">REMOVER</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODAL PARA REMOVER MEMBRO - NOVO -->
+                <div id="modalRemoverMembro" class="modal-overlay">
+                    <div class="confirm-modal">
+                        <div class="confirm-header" style="background: linear-gradient(135deg, #f97316, #fb923c);">
+                            <i data-lucide="user-minus" class="w-12 h-12 mx-auto"></i>
+                            <h2 class="text-xl font-bold">REMOVER MEMBRO</h2>
+                        </div>
+                        
+                        <div class="confirm-body">
+                            <div class="text-center">
+                                <p class="text-lg text-slate-600 mb-3">Remover este membro da comissão?</p>
+                                <p class="text-xl font-bold text-blue-600" id="membroRemoverNome"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="confirm-footer">
+                            <button onclick="fecharModalRemoverMembro()" class="btn-cancel">CANCELAR</button>
+                            <button onclick="confirmarRemoverMembro()" class="btn-confirm" style="background: #f97316;">REMOVER</button>
                         </div>
                     </div>
                 </div>
@@ -785,6 +879,10 @@
         let protocoloAtual = '{{ denuncia.protocolo if denuncia else "" }}';
         let csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
         let processoFinalizado = false;
+        // ===== VARIÁVEIS PARA OS MODAIS =====
+        let cardParaRemover = null;
+        let cardProvaParaRemover = null;
+        let cardDiligenciaParaRemover = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
@@ -910,6 +1008,210 @@
             setTimeout(() => {
                 toast.classList.add('hidden');
             }, 4000);
+        }
+
+        // ===== FUNÇÕES PARA REMOVER PROVA COM MODAL =====
+        function mostrarModalRemoverProva(btn) {
+            if (processoFinalizado) return;
+            
+            cardProvaParaRemover = btn.closest('.anexo-card');
+            const descricao = cardProvaParaRemover.querySelector('.text-xs.text-slate-500')?.innerText || 'Esta prova';
+            
+            document.getElementById('provaRemoverDescricao').innerText = descricao;
+            abrirModal('modalRemoverProva');
+            lucide.createIcons();
+        }
+
+        function fecharModalRemoverProva() {
+            fecharModal('modalRemoverProva');
+            cardProvaParaRemover = null;
+        }
+
+        async function confirmarRemoverProva() {
+            if (!cardProvaParaRemover) {
+                fecharModalRemoverProva();
+                return;
+            }
+            
+            const card = cardProvaParaRemover;
+            const nome = card.dataset.nome;
+            const dataAnexo = card.dataset.dataAnexo;
+            
+            fecharModalRemoverProva();
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/sindicancia/remover-prova', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        protocolo: protocoloAtual,
+                        nome: nome,
+                        data_anexo: dataAnexo
+                    })
+                });
+                
+                if (response.ok) {
+                    card.remove();
+                    
+                    if (document.getElementById('listaProvas').children.length === 0) {
+                        document.getElementById('listaProvas').innerHTML = '<div class="text-center text-slate-400 text-sm py-4">Nenhuma prova anexada. Clique em "ANEXAR PROVA" para adicionar.</div>';
+                    }
+                    
+                    mostrarNotificacao('success', 'Sucesso', 'Prova removida com sucesso!');
+                } else {
+                    const result = await response.json();
+                    mostrarNotificacao('error', 'Erro', result.erro || 'Erro ao remover prova');
+                }
+            } catch (error) {
+                console.error('Erro ao remover prova:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro de conexão ao remover prova');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        // ===== FUNÇÃO MODIFICADA DE REMOVER PROVA =====
+        async function removerProva(btn) {
+            if (processoFinalizado) return;
+            mostrarModalRemoverProva(btn);
+        }
+
+        // ===== FUNÇÕES PARA REMOVER DILIGÊNCIA COM MODAL =====
+        function mostrarModalRemoverDiligencia(btn) {
+            if (processoFinalizado) return;
+            
+            cardDiligenciaParaRemover = btn.closest('.diligencia-item');
+            const titulo = cardDiligenciaParaRemover.querySelector('.text-sm.font-bold.text-slate-800')?.innerText || 'Esta diligência';
+            
+            document.getElementById('diligenciaRemoverTitulo').innerText = titulo;
+            abrirModal('modalRemoverDiligencia');
+            lucide.createIcons();
+        }
+
+        function fecharModalRemoverDiligencia() {
+            fecharModal('modalRemoverDiligencia');
+            cardDiligenciaParaRemover = null;
+        }
+
+        async function confirmarRemoverDiligencia() {
+            if (!cardDiligenciaParaRemover) {
+                fecharModalRemoverDiligencia();
+                return;
+            }
+            
+            const card = cardDiligenciaParaRemover;
+            const titulo = card.dataset.titulo;
+            const data = card.dataset.data;
+            
+            fecharModalRemoverDiligencia();
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/sindicancia/remover-diligencia', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        protocolo: protocoloAtual,
+                        titulo: titulo,
+                        data: data
+                    })
+                });
+                
+                if (response.ok) {
+                    card.remove();
+                    
+                    if (document.getElementById('listaDiligencias').children.length === 0) {
+                        document.getElementById('listaDiligencias').innerHTML = '<div class="text-center text-slate-400 text-sm py-8">Nenhuma diligência registrada. Clique em "NOVA DILIGÊNCIA" para começar.</div>';
+                    }
+                    
+                    mostrarNotificacao('success', 'Sucesso', 'Diligência removida com sucesso!');
+                }
+            } catch (error) {
+                console.error('Erro ao remover diligência:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro ao remover diligência');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        // ===== FUNÇÃO MODIFICADA DE REMOVER DILIGÊNCIA =====
+        async function removerDiligencia(btn) {
+            if (processoFinalizado) return;
+            mostrarModalRemoverDiligencia(btn);
+        }
+
+        // ===== FUNÇÕES PARA REMOVER MEMBRO COM MODAL =====
+        function mostrarModalRemoverMembro(btn, nome) {
+            if (processoFinalizado) return;
+            
+            cardParaRemover = btn.closest('.membro-card');
+            document.getElementById('membroRemoverNome').innerText = nome;
+            abrirModal('modalRemoverMembro');
+            lucide.createIcons();
+        }
+
+        function fecharModalRemoverMembro() {
+            fecharModal('modalRemoverMembro');
+            cardParaRemover = null;
+        }
+
+        async function confirmarRemoverMembro() {
+            if (!cardParaRemover) {
+                fecharModalRemoverMembro();
+                return;
+            }
+            
+            const card = cardParaRemover;
+            const nome = card.dataset.nome;
+            
+            fecharModalRemoverMembro();
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/sindicancia/remover-membro', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        protocolo: protocoloAtual,
+                        nome: nome
+                    })
+                });
+                
+                if (response.ok) {
+                    card.remove();
+                    
+                    if (document.getElementById('listaMembros').children.length === 0) {
+                        document.getElementById('listaMembros').innerHTML = '<div class="text-center text-slate-400 text-sm py-4">Nenhum membro designado. Clique em "ADICIONAR" para começar.</div>';
+                    }
+                    
+                    mostrarNotificacao('success', 'Sucesso', 'Membro removido com sucesso!');
+                }
+            } catch (error) {
+                console.error('Erro ao remover membro:', error);
+                mostrarNotificacao('error', 'Erro', 'Erro ao remover membro');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        // ===== FUNÇÃO MODIFICADA DE REMOVER MEMBRO =====
+        async function removerMembro(btn) {
+            if (processoFinalizado) return;
+            
+            const card = btn.closest('.membro-card');
+            const nome = card.dataset.nome;
+            
+            mostrarModalRemoverMembro(btn, nome);
         }
 
         // ==========================================
@@ -1108,9 +1410,7 @@
                 });
             }
             
-            // ==========================================
-            // CARREGA PROVAS DO BANCO DE DADOS
-            // ==========================================
+            // Carrega provas do banco de dados
             if (dados.provas && dados.provas.length > 0) {
                 document.getElementById('listaProvas').innerHTML = '';
                 dados.provas.forEach(prova => {
@@ -1196,45 +1496,6 @@
             
             lista.insertAdjacentHTML('beforeend', membroHtml);
             lucide.createIcons();
-        }
-
-        async function removerMembro(btn) {
-            if (processoFinalizado) return;
-            if (!confirm('Remover este membro da comissão?')) return;
-            
-            const card = btn.closest('.membro-card');
-            const nome = card.dataset.nome;
-            
-            mostrarLoading(true);
-            
-            try {
-                const response = await fetch('/api/sindicancia/remover-membro', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        protocolo: protocoloAtual,
-                        nome: nome
-                    })
-                });
-                
-                if (response.ok) {
-                    card.remove();
-                    
-                    if (document.getElementById('listaMembros').children.length === 0) {
-                        document.getElementById('listaMembros').innerHTML = '<div class="text-center text-slate-400 text-sm py-4">Nenhum membro designado. Clique em "ADICIONAR" para começar.</div>';
-                    }
-                    
-                    mostrarNotificacao('success', 'Sucesso', 'Membro removido com sucesso!');
-                }
-            } catch (error) {
-                console.error('Erro ao remover membro:', error);
-                mostrarNotificacao('error', 'Erro', 'Erro ao remover membro');
-            } finally {
-                mostrarLoading(false);
-            }
         }
 
         // ==========================================
@@ -1323,49 +1584,8 @@
             lucide.createIcons();
         }
 
-        async function removerDiligencia(btn) {
-            if (processoFinalizado) return;
-            if (!confirm('Remover esta diligência?')) return;
-            
-            const card = btn.closest('.diligencia-item');
-            const titulo = card.dataset.titulo;
-            const data = card.dataset.data;
-            
-            mostrarLoading(true);
-            
-            try {
-                const response = await fetch('/api/sindicancia/remover-diligencia', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        protocolo: protocoloAtual,
-                        titulo: titulo,
-                        data: data
-                    })
-                });
-                
-                if (response.ok) {
-                    card.remove();
-                    
-                    if (document.getElementById('listaDiligencias').children.length === 0) {
-                        document.getElementById('listaDiligencias').innerHTML = '<div class="text-center text-slate-400 text-sm py-8">Nenhuma diligência registrada. Clique em "NOVA DILIGÊNCIA" para começar.</div>';
-                    }
-                    
-                    mostrarNotificacao('success', 'Sucesso', 'Diligência removida com sucesso!');
-                }
-            } catch (error) {
-                console.error('Erro ao remover diligência:', error);
-                mostrarNotificacao('error', 'Erro', 'Erro ao remover diligência');
-            } finally {
-                mostrarLoading(false);
-            }
-        }
-
         // ==========================================
-        // FUNÇÕES DE PROVAS - ATUALIZADAS PARA USAR A API
+        // FUNÇÕES DE PROVAS
         // ==========================================
         function mostrarFormProva() {
             if (processoFinalizado) return;
@@ -1377,6 +1597,7 @@
             document.getElementById('provaArquivo').value = '';
             document.getElementById('provaDescricao').value = '';
             document.getElementById('provaTipo').value = 'documento';
+            document.getElementById('file-name').innerText = 'Nenhum arquivo selecionado';
         }
 
         async function salvarProva() {
@@ -1469,50 +1690,6 @@
             
             lista.insertAdjacentHTML('beforeend', provaHtml);
             lucide.createIcons();
-        }
-
-        async function removerProva(btn) {
-            if (processoFinalizado) return;
-            if (!confirm('Remover esta prova?')) return;
-            
-            const card = btn.closest('.anexo-card');
-            const nome = card.dataset.nome;
-            const dataAnexo = card.dataset.dataAnexo;
-            
-            mostrarLoading(true);
-            
-            try {
-                const response = await fetch('/api/sindicancia/remover-prova', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        protocolo: protocoloAtual,
-                        nome: nome,
-                        data_anexo: dataAnexo
-                    })
-                });
-                
-                if (response.ok) {
-                    card.remove();
-                    
-                    if (document.getElementById('listaProvas').children.length === 0) {
-                        document.getElementById('listaProvas').innerHTML = '<div class="text-center text-slate-400 text-sm py-4">Nenhuma prova anexada. Clique em "ANEXAR PROVA" para adicionar.</div>';
-                    }
-                    
-                    mostrarNotificacao('success', 'Sucesso', 'Prova removida com sucesso!');
-                } else {
-                    const result = await response.json();
-                    mostrarNotificacao('error', 'Erro', result.erro || 'Erro ao remover prova');
-                }
-            } catch (error) {
-                console.error('Erro ao remover prova:', error);
-                mostrarNotificacao('error', 'Erro', 'Erro ao remover prova');
-            } finally {
-                mostrarLoading(false);
-            }
         }
 
         // ==========================================

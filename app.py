@@ -1,11 +1,14 @@
 """
 Módulo de Configuração e Inicialização - Sistema CodeTecx 2026
-Versão com Sindicância, IP e Logs Forenses
+Versão com Sindicância, IP e Logs Forenses + Melhorias Multi-tenant
 """
 import os
 import hashlib
 import base64
 import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from bson import ObjectId
 from datetime import datetime, timedelta, timezone
 
@@ -129,6 +132,52 @@ def registrar_log_forense(acao, protocolo, usuario, ip_criptografado, empresa_sl
 def is_master():
     """Verifica se o usuário é master (suporte_codetecx)"""
     return session.get('admin_user') == 'suporte_codetecx'
+
+# ============================================================
+# === [FUNÇÃO DE EMAIL DO MULTI-TENANT] ===
+# ============================================================
+MEU_EMAIL_ENVIO = "canaldenuncia@codetecx.com"
+MINHA_SENHA_APP = "eflwietplcuoazsd"
+
+def enviar_email_notificacao(email_criptografado, protocolo, parecer):
+    """Envia email de notificação quando a denúncia é finalizada"""
+    try:
+        if not email_criptografado or "ANÔNIMO" in email_criptografado:
+            return False
+        try:
+            email_real = cipher_suite.decrypt(email_criptografado.encode()).decode()
+        except:
+            email_real = email_criptografado
+        
+        msg = MIMEMultipart()
+        msg['From'] = f"Comitê de Ética <{MEU_EMAIL_ENVIO}>"
+        msg['To'] = email_real
+        msg['Subject'] = f"CONCLUSÃO DE CHAMADO: Protocolo #{protocolo}"
+
+        corpo_html = f"""
+        <html>
+            <body style="font-family: 'Segoe UI'; color: #1e293b;">
+                <div style="max-width: 600px; margin: auto; border: 1px solid #e2e8f0; padding: 30px; border-radius: 15px;">
+                    <h2 style="color: #2563eb;">Atualização Final de Relato</h2>
+                    <p>Informamos que a análise do seu relato sob o protocolo <strong>{protocolo}</strong> foi concluída.</p>
+                    <div style="background-color: #f1f5f9; padding: 20px; border-left: 6px solid #2563eb;">
+                        <p><strong>Parecer:</strong> "{parecer}"</p>
+                    </div>
+                </div>
+            </body>
+        </html>
+        """
+        msg.attach(MIMEText(corpo_html, 'html'))
+
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(MEU_EMAIL_ENVIO, MINHA_SENHA_APP)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Erro e-mail: {e}")
+        return False
 
 # ============================================================
 # === [MARCA/CORES] CONFIGURAÇÃO DE WHITE LABEL           ===
@@ -323,6 +372,7 @@ def home():
         cores_atuais = CORES_SISTEMA.get(empresa_slug, CORES_SISTEMA['Uniao'])
         ultimo_visto = request.cookies.get('ultimo_protocolo', 'Nenhum')
         
+        # O context processor já vai injetar empresa_site automaticamente
         return render_template('denuncia.html', 
                                 ultimo=ultimo_visto, 
                                 nome_sistema=f"Portal {config['nome']}", 
@@ -421,19 +471,29 @@ def enviar():
                 imagem_base64 = base64.b64encode(arquivo.read()).decode('utf-8')
                 conteudo_anexo_final = f"data:image/{extensao};base64,{imagem_base64}"
 
+        email_bruto = request.form.get('email_opcional', '').strip()
+        email_final = email_bruto if email_bruto else "ANÔNIMO"
+
+        # 🔥 NOVO: Criptografa email se fornecido (melhoria multi-tenant)
+        if email_bruto:
+            try:
+                email_final = cipher_suite.encrypt(email_bruto.encode()).decode()
+            except:
+                email_final = email_bruto
+
         nova_denuncia = {
             "protocolo": protocolo,
             "data": agora.strftime('%d/%m/%Y %H:%M:%S'),
-            "ip": ip_criptografado,  # 🔥 NOVO: IP criptografado
+            "ip": ip_criptografado,
             "unidade": request.form.get('unidade'),
             "categoria": request.form.get('categoria'),
             "assunto": request.form.get('titulo'),
             "relato": request.form.get('relato'),
             "anexo": conteudo_anexo_final,
-            "email_contato": request.form.get('email_opcional', 'ANÔNIMO'),
+            "email_contato": email_final,
             "status": "Recebido / Em Triagem",
             "parecer_comite": "",
-            "lida": False  # 🔥 NOVO: Controle de notificações
+            "lida": False
         }
         
         col_atual.insert_one(nova_denuncia)
@@ -447,7 +507,7 @@ def enviar():
             empresa_slug=slug,
             detalhes={"unidade": request.form.get('unidade')}
         )
-        
+
         resp = make_response(jsonify({"status": "sucesso", "protocolo": protocolo}))
         resp.set_cookie('ultimo_protocolo', protocolo, max_age=60*60*24*30)
         return resp
@@ -732,6 +792,9 @@ def atualizar():
         unidade_admin = session.get('admin_unidade')
         colecao_alvo = f'denuncias_{unidade_admin}'
 
+    # Busca denúncia para pegar email
+    denuncia = db[colecao_alvo].find_one({"protocolo": prot})
+    
     db[colecao_alvo].update_one(
         {"protocolo": prot},
         {"$set": {
@@ -742,6 +805,14 @@ def atualizar():
             "ultimo_usuario": session.get('admin_nome')
         }}
     )
+    
+    # 🔥 NOVO: Envia email se status for "Finalizada" (melhoria multi-tenant)
+    if novo_status == "Finalizada" and denuncia and denuncia.get('email_contato'):
+        enviar_email_notificacao(
+            denuncia.get('email_contato'), 
+            prot, 
+            novo_parecer
+        )
     
     # 🔥 Registra log
     slug_empresa = colecao_alvo.replace("denuncias_", "")
@@ -755,6 +826,36 @@ def atualizar():
     )
     
     return redirect(url_for('dashboard'))
+
+@app.route('/alterar_acesso', methods=['POST'])
+def alterar_senha():
+    if not session.get('admin_logado'): 
+        return redirect(url_for('login'))
+    
+    usuario_atual = session.get('admin_user')
+    novo_user = request.form.get('novo_user')
+    nova_senha = request.form.get('nova_senha')
+    
+    ip_admin = obter_ip()
+    ip_criptografado = criptografar_ip(ip_admin)
+    
+    if nova_senha and novo_user:
+        col_config.update_one(
+            {"user": usuario_atual}, 
+            {"$set": {"user": novo_user, "pass": str(nova_senha)}}
+        )
+        session['admin_user'] = novo_user
+        
+        registrar_log_forense(
+            acao="ACESSO_ALTERADO",
+            protocolo=None,
+            usuario=session.get('admin_nome'),
+            ip_criptografado=ip_criptografado,
+            empresa_slug=session.get('admin_unidade')
+        )
+        
+        return "OK", 200
+    return "Erro", 400
 
 # ==========================================
 # [SISTEMA DE SINDICÂNCIA]
@@ -885,10 +986,488 @@ def api_instaurar_sindicancia():
     
     return jsonify({"status": "ok", "sindicancia": nova_sindicancia})
 
-# ==========================================
-# [AS DEMAIS ROTAS DA SINDICÂNCIA CONTINUAM IGUAIS]
-# ==========================================
-# (mantenha todas as outras rotas de sindicância que você já tem)
+@app.route('/api/sindicancia/adicionar-membro', methods=['POST'])
+def api_adicionar_membro():
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    data = request.json
+    protocolo = data.get('protocolo')
+    nome = data.get('nome')
+    funcao = data.get('funcao')
+    
+    ip_admin = obter_ip()
+    ip_criptografado = criptografar_ip(ip_admin)
+    
+    if not all([protocolo, nome, funcao]):
+        return jsonify({"erro": "Dados incompletos"}), 400
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Precisa descobrir de qual empresa é o protocolo
+        slug_empresa = None
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("sindicancias_"):
+                sind = db[nome_col].find_one({"protocolo": protocolo})
+                if sind:
+                    slug_empresa = nome_col.replace("sindicancias_", "")
+                    break
+        if not slug_empresa:
+            return jsonify({"erro": "Sindicância não encontrada"}), 404
+        colecao_sind = f'sindicancias_{slug_empresa}'
+    else:
+        colecao_sind = f'sindicancias_{unidade_admin}'
+    
+    resultado = db[colecao_sind].update_one(
+        {"protocolo": protocolo},
+        {"$push": {"comissao": {
+            "nome": nome, 
+            "funcao": funcao,
+            "adicionado_por": session.get('admin_nome'),
+            "adicionado_ip": ip_criptografado,
+            "adicionado_em": datetime.now(FUSO_BR).strftime('%d/%m/%Y %H:%M:%S')
+        }}}
+    )
+    
+    if resultado.modified_count == 0:
+        return jsonify({"erro": "Sindicância não encontrada"}), 404
+    
+    registrar_log_forense(
+        acao="MEMBRO_ADICIONADO",
+        protocolo=protocolo,
+        usuario=session.get('admin_nome'),
+        ip_criptografado=ip_criptografado,
+        empresa_slug=slug_empresa if unidade_admin == "Geral" else unidade_admin,
+        detalhes={"membro": nome, "funcao": funcao}
+    )
+    
+    return jsonify({"status": "ok"})
+
+@app.route('/api/sindicancia/remover-membro', methods=['POST'])
+def api_remover_membro():
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    data = request.json
+    protocolo = data.get('protocolo')
+    nome = data.get('nome')
+    
+    ip_admin = obter_ip()
+    ip_criptografado = criptografar_ip(ip_admin)
+    
+    if not all([protocolo, nome]):
+        return jsonify({"erro": "Dados incompletos"}), 400
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Precisa descobrir de qual empresa é o protocolo
+        slug_empresa = None
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("sindicancias_"):
+                sind = db[nome_col].find_one({"protocolo": protocolo})
+                if sind:
+                    slug_empresa = nome_col.replace("sindicancias_", "")
+                    break
+        if not slug_empresa:
+            return jsonify({"erro": "Sindicância não encontrada"}), 404
+        colecao_sind = f'sindicancias_{slug_empresa}'
+    else:
+        colecao_sind = f'sindicancias_{unidade_admin}'
+    
+    resultado = db[colecao_sind].update_one(
+        {"protocolo": protocolo},
+        {"$pull": {"comissao": {"nome": nome}}}
+    )
+    
+    if resultado.modified_count == 0:
+        return jsonify({"erro": "Membro não encontrado"}), 404
+    
+    registrar_log_forense(
+        acao="MEMBRO_REMOVIDO",
+        protocolo=protocolo,
+        usuario=session.get('admin_nome'),
+        ip_criptografado=ip_criptografado,
+        empresa_slug=slug_empresa if unidade_admin == "Geral" else unidade_admin,
+        detalhes={"membro": nome}
+    )
+    
+    return jsonify({"status": "ok"})
+
+@app.route('/api/sindicancia/adicionar-diligencia', methods=['POST'])
+def api_adicionar_diligencia():
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    data = request.json
+    protocolo = data.get('protocolo')
+    
+    ip_admin = obter_ip()
+    ip_criptografado = criptografar_ip(ip_admin)
+    
+    if not protocolo:
+        return jsonify({"erro": "Protocolo não informado"}), 400
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Precisa descobrir de qual empresa é o protocolo
+        slug_empresa = None
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("sindicancias_"):
+                sind = db[nome_col].find_one({"protocolo": protocolo})
+                if sind:
+                    slug_empresa = nome_col.replace("sindicancias_", "")
+                    break
+        if not slug_empresa:
+            return jsonify({"erro": "Sindicância não encontrada"}), 404
+        colecao_sind = f'sindicancias_{slug_empresa}'
+    else:
+        colecao_sind = f'sindicancias_{unidade_admin}'
+    
+    diligencia = {
+        "data": data.get('data'),
+        "titulo": data.get('titulo'),
+        "descricao": data.get('descricao'),
+        "registrado_por": session.get('admin_nome', 'Admin'),
+        "registrado_ip": ip_criptografado,
+        "registrado_em": datetime.now(FUSO_BR).strftime('%d/%m/%Y %H:%M:%S')
+    }
+    
+    resultado = db[colecao_sind].update_one(
+        {"protocolo": protocolo},
+        {"$push": {"diligencias": diligencia}}
+    )
+    
+    if resultado.modified_count == 0:
+        return jsonify({"erro": "Sindicância não encontrada"}), 404
+    
+    registrar_log_forense(
+        acao="DILIGENCIA_ADICIONADA",
+        protocolo=protocolo,
+        usuario=session.get('admin_nome'),
+        ip_criptografado=ip_criptografado,
+        empresa_slug=slug_empresa if unidade_admin == "Geral" else unidade_admin,
+        detalhes={"titulo": data.get('titulo')}
+    )
+    
+    return jsonify({"status": "ok", "diligencia": diligencia})
+
+@app.route('/api/sindicancia/remover-diligencia', methods=['POST'])
+def api_remover_diligencia():
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    data = request.json
+    protocolo = data.get('protocolo')
+    titulo = data.get('titulo')
+    data_diligencia = data.get('data')
+    
+    ip_admin = obter_ip()
+    ip_criptografado = criptografar_ip(ip_admin)
+    
+    if not all([protocolo, titulo]):
+        return jsonify({"erro": "Dados incompletos"}), 400
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Precisa descobrir de qual empresa é o protocolo
+        slug_empresa = None
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("sindicancias_"):
+                sind = db[nome_col].find_one({"protocolo": protocolo})
+                if sind:
+                    slug_empresa = nome_col.replace("sindicancias_", "")
+                    break
+        if not slug_empresa:
+            return jsonify({"erro": "Sindicância não encontrada"}), 404
+        colecao_sind = f'sindicancias_{slug_empresa}'
+    else:
+        colecao_sind = f'sindicancias_{unidade_admin}'
+    
+    resultado = db[colecao_sind].update_one(
+        {"protocolo": protocolo},
+        {"$pull": {"diligencias": {"titulo": titulo, "data": data_diligencia}}}
+    )
+    
+    if resultado.modified_count == 0:
+        return jsonify({"erro": "Diligência não encontrada"}), 404
+    
+    registrar_log_forense(
+        acao="DILIGENCIA_REMOVIDA",
+        protocolo=protocolo,
+        usuario=session.get('admin_nome'),
+        ip_criptografado=ip_criptografado,
+        empresa_slug=slug_empresa if unidade_admin == "Geral" else unidade_admin,
+        detalhes={"titulo": titulo}
+    )
+    
+    return jsonify({"status": "ok"})
+
+@app.route('/api/sindicancia/adicionar-prova', methods=['POST'])
+def api_adicionar_prova():
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    try:
+        protocolo = request.form.get('protocolo')
+        descricao = request.form.get('descricao')
+        tipo = request.form.get('tipo')
+        arquivo = request.files.get('arquivo')
+        
+        ip_admin = obter_ip()
+        ip_criptografado = criptografar_ip(ip_admin)
+        
+        if not all([protocolo, descricao, arquivo]):
+            return jsonify({"erro": "Dados incompletos"}), 400
+        
+        unidade_admin = session.get('admin_unidade')
+        
+        if unidade_admin == "Geral":
+            # Precisa descobrir de qual empresa é o protocolo
+            slug_empresa = None
+            for nome_col in db.list_collection_names():
+                if nome_col.startswith("sindicancias_"):
+                    sind = db[nome_col].find_one({"protocolo": protocolo})
+                    if sind:
+                        slug_empresa = nome_col.replace("sindicancias_", "")
+                        break
+            if not slug_empresa:
+                return jsonify({"erro": "Sindicância não encontrada"}), 404
+            colecao_sind = f'sindicancias_{slug_empresa}'
+        else:
+            colecao_sind = f'sindicancias_{unidade_admin}'
+            slug_empresa = unidade_admin
+        
+        sindicancia = db[colecao_sind].find_one({"protocolo": protocolo})
+        if not sindicancia:
+            return jsonify({"erro": "Sindicância não encontrada"}), 404
+        
+        if sindicancia.get('status') == 'concluida':
+            return jsonify({"erro": "Não é possível adicionar provas a uma sindicância concluída"}), 403
+        
+        extensao = os.path.splitext(arquivo.filename)[1].lower()
+        nome_seguro = secure_filename(arquivo.filename)
+        
+        conteudo_base64 = base64.b64encode(arquivo.read()).decode('utf-8')
+        mime_type = arquivo.content_type or 'application/octet-stream'
+        
+        prova = {
+            "nome": nome_seguro,
+            "descricao": descricao,
+            "tipo": tipo,
+            "mime_type": mime_type,
+            "extensao": extensao,
+            "conteudo": f"data:{mime_type};base64,{conteudo_base64}",
+            "data_anexo": datetime.now(FUSO_BR).strftime('%d/%m/%Y %H:%M:%S'),
+            "anexado_por": session.get('admin_nome', 'Admin'),
+            "anexado_ip": ip_criptografado
+        }
+        
+        resultado = db[colecao_sind].update_one(
+            {"protocolo": protocolo},
+            {"$push": {"provas": prova}}
+        )
+        
+        if resultado.modified_count == 0:
+            return jsonify({"erro": "Erro ao salvar prova"}), 500
+        
+        registrar_log_forense(
+            acao="PROVA_ADICIONADA",
+            protocolo=protocolo,
+            usuario=session.get('admin_nome'),
+            ip_criptografado=ip_criptografado,
+            empresa_slug=slug_empresa,
+            detalhes={"arquivo": nome_seguro, "tipo": tipo}
+        )
+        
+        return jsonify({"status": "ok", "prova": prova})
+        
+    except Exception as e:
+        print(f"Erro ao adicionar prova: {e}")
+        return jsonify({"erro": str(e)}), 500
+
+@app.route('/api/sindicancia/remover-prova', methods=['POST'])
+def api_remover_prova():
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    data = request.json
+    protocolo = data.get('protocolo')
+    nome_prova = data.get('nome')
+    data_anexo = data.get('data_anexo')
+    
+    ip_admin = obter_ip()
+    ip_criptografado = criptografar_ip(ip_admin)
+    
+    if not all([protocolo, nome_prova]):
+        return jsonify({"erro": "Dados incompletos"}), 400
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Precisa descobrir de qual empresa é o protocolo
+        slug_empresa = None
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("sindicancias_"):
+                sind = db[nome_col].find_one({"protocolo": protocolo})
+                if sind:
+                    slug_empresa = nome_col.replace("sindicancias_", "")
+                    break
+        if not slug_empresa:
+            return jsonify({"erro": "Sindicância não encontrada"}), 404
+        colecao_sind = f'sindicancias_{slug_empresa}'
+    else:
+        colecao_sind = f'sindicancias_{unidade_admin}'
+        slug_empresa = unidade_admin
+    
+    sindicancia = db[colecao_sind].find_one({"protocolo": protocolo})
+    if not sindicancia:
+        return jsonify({"erro": "Sindicância não encontrada"}), 404
+    
+    if sindicancia.get('status') == 'concluida':
+        return jsonify({"erro": "Não é possível remover provas de uma sindicância concluída"}), 403
+    
+    resultado = db[colecao_sind].update_one(
+        {"protocolo": protocolo},
+        {"$pull": {"provas": {"nome": nome_prova, "data_anexo": data_anexo}}}
+    )
+    
+    if resultado.modified_count == 0:
+        return jsonify({"erro": "Prova não encontrada"}), 404
+    
+    registrar_log_forense(
+        acao="PROVA_REMOVIDA",
+        protocolo=protocolo,
+        usuario=session.get('admin_nome'),
+        ip_criptografado=ip_criptografado,
+        empresa_slug=slug_empresa,
+        detalhes={"arquivo": nome_prova}
+    )
+    
+    return jsonify({"status": "ok"})
+
+@app.route('/sindicancia/prova/<protocolo>/<path:nome_prova>')
+def visualizar_prova(protocolo, nome_prova):
+    if not session.get('admin_logado'):
+        return redirect(url_for('login'))
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Master - procura em todas as coleções
+        sindicancia = None
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("sindicancias_"):
+                sindicancia = db[nome_col].find_one({"protocolo": protocolo})
+                if sindicancia:
+                    break
+        if not sindicancia:
+            return "Sindicância não encontrada", 404
+    else:
+        colecao_sind = f'sindicancias_{unidade_admin}'
+        sindicancia = db[colecao_sind].find_one({"protocolo": protocolo})
+        if not sindicancia:
+            return "Sindicância não encontrada", 404
+    
+    prova = None
+    for p in sindicancia.get('provas', []):
+        if p.get('nome') == nome_prova:
+            prova = p
+            break
+    
+    if not prova:
+        return "Prova não encontrada", 404
+    
+    conteudo = prova.get('conteudo', '')
+    if conteudo.startswith('data:'):
+        partes = conteudo.split(',', 1)
+        if len(partes) > 1:
+            conteudo = partes[1]
+    
+    try:
+        dados = base64.b64decode(conteudo)
+        response = make_response(dados)
+        response.headers.set('Content-Type', prova.get('mime_type', 'application/octet-stream'))
+        response.headers.set('Content-Disposition', f'inline; filename="{prova.get("nome", "arquivo")}"')
+        return response
+    except Exception as e:
+        print(f"Erro ao carregar prova: {e}")
+        return "Erro ao carregar prova", 500
+
+@app.route('/api/sindicancia/salvar-relatorio', methods=['POST'])
+def api_salvar_relatorio():
+    if not session.get('admin_logado'):
+        return jsonify({"erro": "Não autorizado"}), 403
+    
+    data = request.json
+    protocolo = data.get('protocolo')
+    
+    ip_admin = obter_ip()
+    ip_criptografado = criptografar_ip(ip_admin)
+    
+    if not protocolo:
+        return jsonify({"erro": "Protocolo não informado"}), 400
+    
+    unidade_admin = session.get('admin_unidade')
+    
+    if unidade_admin == "Geral":
+        # Precisa descobrir de qual empresa é o protocolo
+        slug_empresa = None
+        for nome_col in db.list_collection_names():
+            if nome_col.startswith("sindicancias_"):
+                sind = db[nome_col].find_one({"protocolo": protocolo})
+                if sind:
+                    slug_empresa = nome_col.replace("sindicancias_", "")
+                    break
+        if not slug_empresa:
+            return jsonify({"erro": "Sindicância não encontrada"}), 404
+        colecao_sind = f'sindicancias_{slug_empresa}'
+    else:
+        colecao_sind = f'sindicancias_{unidade_admin}'
+        slug_empresa = unidade_admin
+    
+    update_data = {
+        "relatorio_final": data.get('relatorio', ''),
+        "tipo_sindicancia": data.get('tipo_sindicancia', 'investigativa'),
+        "conclusao": data.get('conclusao', ''),
+        "data_conclusao": data.get('data_conclusao', ''),
+        "ultima_atualizacao": datetime.now(FUSO_BR).strftime('%d/%m/%Y %H:%M:%S'),
+        "ultimo_ip": ip_criptografado,
+        "ultimo_usuario": session.get('admin_nome', 'Admin')
+    }
+    
+    if data.get('prazo'):
+        update_data["prazo_final"] = data.get('prazo')
+    
+    if data.get('status'):
+        update_data["status"] = data.get('status')
+        if data.get('status') == 'concluida':
+            update_data["finalizado_por"] = session.get('admin_nome', 'Admin')
+            update_data["finalizado_ip"] = ip_criptografado
+            update_data["finalizado_em"] = datetime.now(FUSO_BR).strftime('%d/%m/%Y %H:%M:%S')
+    
+    resultado = db[colecao_sind].update_one(
+        {"protocolo": protocolo},
+        {"$set": update_data}
+    )
+    
+    if resultado.modified_count == 0:
+        return jsonify({"erro": "Sindicância não encontrada"}), 404
+    
+    acao = "SINDICANCIA_FINALIZADA" if data.get('status') == 'concluida' else "RELATORIO_ATUALIZADO"
+    registrar_log_forense(
+        acao=acao,
+        protocolo=protocolo,
+        usuario=session.get('admin_nome'),
+        ip_criptografado=ip_criptografado,
+        empresa_slug=slug_empresa,
+        detalhes={"status": data.get('status')}
+    )
+    
+    return jsonify({"status": "ok"})
 
 # ==========================================
 # [ROTA PARA ANEXO DA DENÚNCIA]
@@ -1536,6 +2115,10 @@ def dossie_sindicancia(protocolo):
     
     return make_response(html)
 
-# ✅ AJUSTE 4: Porta voltou para 8000
+# ✅ Porta 8000
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    print("="*50)
+    print("🚀 Servidor CodeTecx iniciado!")
+    print("📌 Acesse: http://localhost:8000")
+    print("="*50)
+    app.run(host="0.0.0.0", port=8000, debug=True)
